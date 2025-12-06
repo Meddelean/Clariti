@@ -1,0 +1,5628 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TradeLog Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-2: #f5f7fa;
+      --surface: #ffffff;
+      --surface-2: #fafbfc;
+      --border: #e1e8ed;
+      --border-hover: #cbd5e0;
+      --text: #111827;
+      --text-dim: #6b7280;
+      --text-light: #9ca3af;
+      --primary: #000000;
+      --primary-hover: #1f1f1f;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --neutral: #6b7280;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      --green: #10b981;
+      --red: #ef4444;
+      --green-light: #34d399;
+      --red-light: #f87171;
+      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg: #1a1a1a;
+      --bg-2: #1f1f1f;
+      --surface: #252525;
+      --surface-2: #2a2a2a;
+      --border: #3d3d3d;
+      --border-hover: #4a4a4a;
+      --text: #e5e5e5;
+      --text-dim: #a0a0a0;
+      --text-light: #808080;
+      --primary: #e5e5e5;
+      --primary-hover: #f0f0f0;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --neutral: #808080;
+      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.6);
+      --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.8), 0 12px 24px rgba(0, 0, 0, 0.7);
+    }
+
+    [data-theme="dark"] body {
+      background: #1a1a1a;
+    }
+
+    [data-theme="dark"] .calendar-grid tbody td {
+      background: var(--surface);
+    }
+
+    [data-theme="dark"] thead th:first-child {
+      border-top-left-radius: var(--radius);
+    }
+
+    [data-theme="dark"] thead th:last-child {
+      border-top-right-radius: var(--radius);
+    }
+
+    [data-theme="dark"] .calendar-grid thead th {
+      background: transparent;
+    }
+
+    [data-theme="dark"] .select-clean {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'><path fill='%23ffffff' d='M7 10l5 5 5-5z'/></svg>");
+    }
+
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: auto;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: 'kern' 1;
+    }
+    
+    #appContainer {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 28px;
+      min-height: 100vh;
+      padding: 28px;
+      width: 100%;
+      margin: 0;
+    }
+
+    .sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 28px;
+      height: fit-content;
+      min-height: calc(100vh - 56px);
+    }
+    
+    .sidebar-content {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    
+    .user-section {
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .user-email {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      word-break: break-all;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .user-label {
+      color: var(--text-dim);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+    
+    .user-logout-btn {
+      all: unset;
+      width: 100%;
+      max-width: 100%;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.08);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-sizing: border-box;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .user-logout-btn svg {
+      flex-shrink: 0;
+    }
+    
+    .user-logout-btn:hover {
+      background: var(--text);
+      color: var(--surface);
+      border-color: var(--text);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .user-logout-btn:active {
+      transform: scale(0.98);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      flex: 0 0 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--surface);
+      font-weight: 700;
+      font-size: 20px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .nav-btn {
+      all: unset;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: left;
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-btn-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-btn-icon svg {
+      width: 100%;
+      height: 100%;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .nav-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text);
+    }
+
+    .nav-btn.active {
+      background: var(--text);
+      color: var(--surface);
+      font-weight: 600;
+      box-shadow: var(--shadow-lg) !important;
+    }
+
+    .nav-btn.active:hover {
+      background: var(--primary-hover);
+      color: var(--surface);
+      box-shadow: var(--shadow-lg) !important;
+    }
+
+    .nav-btn.active:active,
+    .nav-btn.active:focus,
+    .nav-btn.active:focus-visible {
+      background: var(--text);
+      color: var(--surface);
+      box-shadow: var(--shadow-lg) !important;
+      outline: none;
+    }
+
+    [data-theme="dark"] .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    [data-theme="dark"] .nav-btn.active {
+      background: #ffffff;
+      color: #1a1a1a;
+    }
+
+    [data-theme="dark"] .nav-btn.active:hover {
+      background: #f0f0f0;
+      color: #1a1a1a;
+    }
+
+    .main {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      width: 100%;
+      margin: 0;
+    }
+
+    #pageContent {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      transition: opacity 900ms ease-in-out, visibility 0s linear 900ms;
+    }
+
+    #pageContent.fade-in {
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: opacity 900ms ease-in-out, visibility 0s linear 0s;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 28px 36px;
+      box-shadow: var(--shadow);
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .page-title {
+      font-size: 24px;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      transition: opacity 600ms ease-in-out;
+    }
+
+    .page-title.fade-out {
+      opacity: 0;
+    }
+
+    .page-title.fade-in {
+      opacity: 1;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 14px;
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center
+    }
+
+    .btn {
+      all: unset;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: var(--surface);
+      border: 1px solid var(--text);
+      padding: 12px 28px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-weight: 600;
+      transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-primary:hover {
+      background: var(--text);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.2) !important;
+      transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      border-radius: var(--radius);
+      padding: 12px 24px;
+      transition: all 150ms ease;
+    }
+
+    .btn-ghost:hover {
+      background: var(--surface-2);
+      border-color: var(--border-hover);
+    }
+
+    .btn-ghost:active {
+      transform: scale(0.97);
+      transition: transform 100ms ease;
+    }
+
+    .btn-export-pdf {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      transition: background-color 400ms ease, color 400ms ease, border-color 400ms ease;
+      padding: 8px 16px;
+      font-size: 13px;
+      gap: 4px;
+    }
+
+    .btn-export-pdf:hover {
+      background-color: #000000;
+      color: #ffffff;
+      border-color: #000000;
+    }
+
+    [data-theme="dark"] .btn-export-pdf:hover {
+      background-color: #ffffff;
+      color: #000000;
+      border-color: #ffffff;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: auto;
+    }
+
+    .card h2 {
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px
+    }
+
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    tbody td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                  box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: inset 0 0 0 0 transparent;
+    }
+
+    tbody tr:hover {
+      background: var(--surface-2);
+      box-shadow: inset 4px 0 0 var(--text),
+                  0 0 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .calendar-grid tbody tr:hover {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .result-win {
+      color: var(--green);
+      font-weight: 600;
+      border: 1px solid var(--green);
+      background: rgba(16, 185, 129, 0.1);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+
+    .result-loss {
+      color: var(--red);
+      font-weight: 600;
+      border: 1px solid var(--red);
+      background: rgba(239, 68, 68, 0.1);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+
+    .result-be {
+      color: var(--neutral);
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+
+    .pnl-win {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .pnl-loss {
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    .trade-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-edit {
+      all: unset;
+      background: var(--surface);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-edit svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+    }
+
+    .btn-edit:hover {
+      background: var(--text);
+      color: var(--surface);
+      border-color: var(--text);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-edit:active {
+      transform: scale(0.97);
+      transition: transform 100ms ease;
+    }
+
+    .btn-danger {
+      all: unset;
+      background: var(--surface);
+      color: var(--danger);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-danger svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: var(--surface);
+      border-color: var(--danger);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-danger:active {
+      transform: scale(0.97);
+      transition: transform 100ms ease;
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .backdrop.show {
+      opacity: 1;
+    }
+
+    .backdrop.hiding {
+      opacity: 0;
+    }
+
+    .modal {
+      width: min(560px, calc(100vw - 32px));
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      border: 1px solid var(--border);
+      position: relative;
+      box-shadow: var(--shadow-xl);
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95) translateY(10px);
+      opacity: 0;
+      transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1), 
+                  opacity 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .backdrop.show .modal {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .backdrop.hiding .modal {
+      transform: scale(0.95) translateY(10px);
+      opacity: 0;
+    }
+
+    .modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .modal-close-btn {
+      all: unset;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      border: 1px solid transparent;
+    }
+
+    .modal-close-btn:focus,
+    .modal-close-btn:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.03);
+    }
+
+    /* Confirm Modal */
+    .confirm-modal {
+      width: min(420px, calc(100vw - 32px));
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      border: 1px solid var(--border);
+      position: relative;
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      transform: scale(0.95) translateY(10px);
+      opacity: 0;
+      transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1), 
+                  opacity 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .backdrop.show .confirm-modal {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .confirm-modal h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .confirm-modal p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .confirm-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .confirm-modal-actions .btn-destructive {
+      background: var(--red);
+      color: #ffffff;
+      border: 1px solid var(--red);
+    }
+
+    .confirm-modal-actions .btn-destructive:hover {
+      background: var(--red-light);
+      border-color: var(--red-light);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .modal-actions .btn,
+    .modal-actions .btn-ghost {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      transition: all 150ms ease;
+      font-family: var(--font);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrapper .input {
+      width: 100%;
+      padding-right: 40px;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 14px;
+      width: 18px;
+      height: 18px;
+      color: var(--text-dim);
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+
+    .input:focus,
+    .input:focus-visible {
+      outline: none;
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .input:hover {
+      border-color: var(--border-hover);
+    }
+
+    /* Dark mode input styles */
+    [data-theme="dark"] .input {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    [data-theme="dark"] .input:focus,
+    [data-theme="dark"] .input:focus-visible {
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .input:hover {
+      border-color: var(--border-hover);
+    }
+
+    [data-theme="dark"] .input::placeholder {
+      color: var(--text-dim);
+      opacity: 0.6;
+    }
+
+    /* Dark mode autocomplete styles */
+    [data-theme="dark"] .input:-webkit-autofill,
+    [data-theme="dark"] .input:-webkit-autofill:hover,
+    [data-theme="dark"] .input:-webkit-autofill:focus,
+    [data-theme="dark"] .input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 100px var(--surface) inset !important;
+      -webkit-text-fill-color: var(--text) !important;
+      caret-color: var(--text) !important;
+      background-color: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius) !important;
+      transition: border-color 150ms ease, background-color 150ms ease !important;
+    }
+
+    [data-theme="dark"] .input:autofill,
+    [data-theme="dark"] .input:autofill:hover,
+    [data-theme="dark"] .input:autofill:focus,
+    [data-theme="dark"] .input:autofill:active {
+      box-shadow: 0 0 0 100px var(--surface) inset !important;
+      color: var(--text) !important;
+      caret-color: var(--text) !important;
+      background-color: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius) !important;
+      transition: border-color 150ms ease, background-color 150ms ease !important;
+    }
+
+    /* P&L input color coding */
+    .input.pnl-positive {
+      color: #10b981; /* --green */
+    }
+
+    .input.pnl-negative {
+      color: #ef4444; /* --red */
+    }
+
+    .input.pnl-neutral {
+      color: var(--text);
+    }
+
+    .note-content {
+      white-space: pre-wrap;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      padding: 0;
+      font-size: 14px
+    }
+
+    .note-close-btn {
+      all: unset;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      border: 1px solid transparent;
+    }
+
+    .note-close-btn:focus,
+    .note-close-btn:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .note-close-btn:hover {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.03)
+    }
+
+    .note-footer-btn {
+      all: unset;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .note-footer-btn:hover {
+      background: var(--surface-2);
+      border-color: var(--border-hover);
+    }
+
+    .note-footer-btn:active {
+      transform: scale(0.97);
+      transition: transform 100ms ease;
+    }
+
+    .select-clean {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-color: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 44px 10px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'><path fill='%23111827' d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px 16px;
+      transition: all 150ms ease;
+      font-family: var(--font);
+      height: auto;
+    }
+
+    .select-clean:hover {
+      border-color: var(--border-hover);
+    }
+
+    .select-clean:focus,
+    .select-clean:focus-visible {
+      outline: none;
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .select-clean::-ms-expand {
+      display: none
+    }
+
+    select option[disabled] {
+      display: none
+    }
+
+    .select-clean option {
+      background-color: var(--surface);
+      color: var(--text);
+      padding: 10px 14px;
+    }
+
+    .select-clean option:hover,
+    .select-clean option:checked {
+      background-color: var(--surface-2);
+      color: var(--text);
+    }
+
+    /* Custom Dropdown Styles */
+    .custom-select-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .custom-select-button {
+      width: 100%;
+      background-color: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 44px 10px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      cursor: pointer;
+      font-family: var(--font);
+      text-align: left;
+      transition: all 150ms ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .custom-select-button:hover {
+      border-color: var(--border-hover);
+    }
+
+    .custom-select-button:focus,
+    .custom-select-button:focus-visible {
+      outline: none;
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .custom-select-button::after {
+      content: '';
+      position: absolute;
+      right: 14px;
+      width: 16px;
+      height: 16px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'><path fill='%23111827' d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      transition: transform 200ms ease;
+    }
+
+    .custom-select-button.open::after {
+      transform: rotate(180deg);
+    }
+
+    .custom-select-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      z-index: 1000;
+      max-height: 240px;
+      overflow-y: auto;
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+      pointer-events: none;
+      transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                  transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 6px;
+      /* Custom scrollbar styles */
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* Webkit scrollbar styles for Chrome/Safari */
+    .custom-select-dropdown::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-select-dropdown::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: var(--radius);
+    }
+
+    .custom-select-dropdown::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+      transition: background 150ms ease;
+    }
+
+    .custom-select-dropdown::-webkit-scrollbar-thumb:hover {
+      background: var(--border-hover);
+    }
+
+    /* Dark mode scrollbar styling */
+    [data-theme="dark"] .custom-select-dropdown {
+      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+
+    [data-theme="dark"] .custom-select-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="dark"] .custom-select-dropdown::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .custom-select-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .custom-select-dropdown.closing {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+      pointer-events: none;
+    }
+
+    .custom-select-option {
+      padding: 12px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+      transition: background-color 150ms ease, color 150ms ease;
+      border-radius: var(--radius);
+      margin: 2px 0;
+    }
+
+    .custom-select-option:hover {
+      background-color: var(--surface-2);
+      color: var(--text);
+      border-radius: var(--radius);
+    }
+
+    /* Darker hover background for light mode */
+    :root .custom-select-option:hover,
+    [data-theme="light"] .custom-select-option:hover {
+      background-color: #f0f2f5;
+    }
+
+    .custom-select-option.selected {
+      background-color: #e5e7eb;
+      color: var(--text);
+      font-weight: 600;
+      position: relative;
+      border-radius: var(--radius);
+      margin: 0;
+      border-bottom: none;
+    }
+
+    /* Enhanced background for selected option in dark mode */
+    [data-theme="dark"] .custom-select-option.selected {
+      background-color: #2f2f2f;
+    }
+
+    .custom-select-option.selected::after {
+      content: '✓';
+      float: right;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* Color coding for dropdown options */
+    .custom-select-option[data-value="Win"],
+    .custom-select-option[data-value="Long"] {
+      color: #10b981; /* --green */
+    }
+
+    .custom-select-option[data-value="Loss"],
+    .custom-select-option[data-value="Short"] {
+      color: #ef4444; /* --red */
+    }
+
+    .custom-select-option[data-value="Breakeven"] {
+      color: #6b7280; /* --text-dim */
+    }
+
+    .custom-select-option.selected[data-value="Win"],
+    .custom-select-option.selected[data-value="Long"] {
+      color: #10b981;
+    }
+
+    .custom-select-option.selected[data-value="Loss"],
+    .custom-select-option.selected[data-value="Short"] {
+      color: #ef4444;
+    }
+
+    .custom-select-option.selected[data-value="Breakeven"] {
+      color: #6b7280;
+    }
+
+    /* Color the button text when option is selected */
+    .custom-select-button[data-selected-value="Win"],
+    .custom-select-button[data-selected-value="Long"] {
+      color: #10b981;
+    }
+
+    .custom-select-button[data-selected-value="Loss"],
+    .custom-select-button[data-selected-value="Short"] {
+      color: #ef4444;
+    }
+
+    .custom-select-button[data-selected-value="Breakeven"] {
+      color: #6b7280;
+    }
+
+    [data-theme="dark"] .custom-select-button::after {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'><path fill='%23ffffff' d='M7 10l5 5 5-5z'/></svg>");
+    }
+
+    button:focus,
+    button:focus-visible,
+    button:active {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    .stats-grid {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 12px
+    }
+
+    .stat-card {
+      flex: 1 1 220px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: var(--surface);
+      padding: 28px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+      border-color: var(--border-hover);
+    }
+
+    .stat-card-featured {
+      flex: 0 0 calc(25% - 12px);
+      min-width: calc(25% - 12px);
+      max-width: calc(25% - 12px);
+      padding: 36px;
+      min-height: 140px;
+    }
+    
+    @media (max-width: 1200px) {
+      .stat-card-featured {
+        flex: 0 0 calc(50% - 8px);
+        min-width: calc(50% - 8px);
+        max-width: calc(50% - 8px);
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .stat-card-featured {
+        flex: 0 0 100%;
+        min-width: 100%;
+        max-width: 100%;
+      }
+    }
+
+    .stat-card-featured .stat-number {
+      font-size: 36px;
+    }
+
+    .stat-card-featured .stat-label {
+      font-size: 14px;
+    }
+
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      transition: opacity 300ms ease;
+    }
+
+    .stat-number.animating {
+      opacity: 0;
+    }
+
+    .stat-number.win {
+      color: var(--green)
+    }
+
+    #winRateCard {
+      color: var(--text) !important;
+    }
+
+    .stat-number.loss {
+      color: var(--red)
+    }
+
+    .stat-number.be {
+      color: var(--neutral)
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .stat-card-row {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: var(--surface);
+      padding: 28px 36px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      margin: 0 auto;
+      box-shadow: var(--shadow);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .stat-card-row:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+      border-color: var(--border-hover);
+    }
+
+    .stat-row-info {
+      display: flex;
+      align-items: center;
+      gap: 14px
+    }
+
+    .stat-row-title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .stat-row-title .stat-label {
+      font-size: 14px;
+      color: var(--text-dim)
+    }
+
+    .stat-row-title .stat-number.win {
+      font-size: 24px
+    }
+
+    .donut {
+      --size: 96px;
+      --thickness: 24px;
+      --fg: var(--green);
+      --bg: rgba(0, 0, 0, 0.08);
+      --deg: 0deg;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 50%;
+      position: relative;
+      background: conic-gradient(var(--fg) 0deg, var(--fg) var(--deg), var(--bg) var(--deg) 360deg);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 8px 20px rgba(15, 23, 42, 0.2);
+      transition: background 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .donut::after {
+      content: "";
+      position: absolute;
+      width: calc(var(--size) - var(--thickness));
+      height: calc(var(--size) - var(--thickness));
+      background: var(--surface);
+      border-radius: 50%;
+    }
+
+    .donut-label {
+      position: relative;
+      z-index: 1;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 16px;
+      transition: opacity 300ms ease;
+    }
+
+    .donut-label.animating {
+      opacity: 0;
+    }
+
+    .toast-container {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 2000;
+      pointer-events: none
+    }
+
+    .toast {
+      min-width: 280px;
+      max-width: 400px;
+      background: var(--surface);
+      color: var(--text);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 200ms ease, transform 200ms ease
+    }
+
+    .toast-success {
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25), 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toast-icon svg {
+      width: 100%;
+      height: 100%;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .toast-success .toast-icon {
+      color: #10b981; /* --green */
+    }
+
+    .toast-error {
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25), 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .toast-error .toast-icon {
+      color: #ef4444; /* --red */
+    }
+
+    .toast-msg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0)
+    }
+
+    .toast .close-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      color: #333;
+      padding: 4px
+    }
+
+    .calendar-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    
+    .calendar-controls label {
+      font-weight: 600;
+    }
+    
+    .calendar-controls select.select-clean {
+      width: 200px !important;
+      max-width: 200px !important;
+      flex-shrink: 0 !important;
+      min-width: 200px;
+    }
+    
+    .calendar-controls .custom-select-container {
+      width: 200px !important;
+      max-width: 200px !important;
+      flex-shrink: 0 !important;
+      min-width: 200px;
+    }
+    
+    .calendar-controls .custom-select-button {
+      width: 100% !important;
+    }
+    
+    .calendar-controls .custom-select-dropdown {
+      width: 100% !important;
+      right: auto !important;
+    }
+
+    .calendar-grid {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 4px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .calendar-grid thead th {
+      padding: 12px;
+      color: var(--text-dim);
+      font-size: 15px;
+      font-weight: 600;
+      border-bottom: none;
+    }
+
+    .calendar-grid tbody td {
+      width: 14.285%;
+      border: 2px solid var(--border);
+      vertical-align: top;
+      padding: 12px;
+      height: 125px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      margin: 4px;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+      box-sizing: border-box;
+    }
+
+    .calendar-grid tbody td:hover {
+      border: 2px solid var(--text);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+      transition: border-color 600ms ease, box-shadow 600ms ease;
+    }
+
+    .day-number {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .day-pnl {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-dim);
+      line-height: 1.4;
+      word-break: break-word;
+      transition: opacity 300ms ease;
+      margin-bottom: 4px;
+    }
+
+    .day-pnl.animating {
+      opacity: 0;
+    }
+
+    .day-trades-count {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-dim);
+      line-height: 1.3;
+      transition: opacity 300ms ease;
+    }
+
+    .day-trades-count.animating {
+      opacity: 0;
+    }
+
+    .pnl-positive {
+      color: var(--green);
+      font-weight: 700
+    }
+
+    .pnl-negative {
+      color: var(--red);
+      font-weight: 700
+    }
+
+    .pnl-zero {
+      color: var(--neutral);
+      font-weight: 700
+    }
+
+    .week-chart {
+      margin-top: 32px;
+      padding: 24px;
+      padding-bottom: 28px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: visible;
+    }
+
+    .week-chart h3 {
+      margin: 0 0 24px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 320px;
+      padding: 60px 8px 50px 8px;
+      margin-bottom: 0;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+      overflow: visible;
+    }
+
+    .chart-bar-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 320px;
+      max-width: 120px;
+      position: relative;
+      padding-top: 0;
+      overflow: visible;
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .chart-bar-container:hover .chart-bar {
+      box-shadow: 0 2px 8px rgba(var(--green-rgb, 52, 199, 89), 0.2), 
+                  0 0 0 2px var(--border),
+                  0 0 0 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-bar-container:hover .chart-bar.positive {
+      box-shadow: 0 2px 8px rgba(var(--green-rgb, 52, 199, 89), 0.2), 
+                  0 0 0 2px var(--green),
+                  0 0 0 4px rgba(var(--green-rgb, 52, 199, 89), 0.15);
+    }
+
+    .chart-bar-container:hover .chart-bar.negative {
+      box-shadow: 0 2px 8px rgba(var(--red-rgb, 255, 69, 58), 0.2), 
+                  0 0 0 2px var(--red),
+                  0 0 0 4px rgba(var(--red-rgb, 255, 69, 58), 0.15);
+    }
+
+    .chart-bar-container:hover .chart-bar-label {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .chart-bar {
+      width: 100%;
+      min-height: 4px;
+      background: linear-gradient(to top, var(--green), var(--green-light));
+      border-radius: 6px 6px 0 0;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 50px;
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(var(--green-rgb, 52, 199, 89), 0.2);
+      max-width: 100%;
+      transform-origin: bottom center;
+    }
+
+    .chart-bar.positive {
+      background: linear-gradient(to top, var(--green), var(--green-light));
+      box-shadow: 0 2px 8px rgba(var(--green-rgb, 52, 199, 89), 0.2);
+    }
+
+    .chart-bar.negative {
+      background: linear-gradient(to top, var(--red), var(--red-light));
+      box-shadow: 0 2px 8px rgba(var(--red-rgb, 255, 69, 58), 0.2);
+    }
+
+    .chart-bar-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 600;
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      z-index: 5;
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .chart-bar-value {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      padding: 4px 6px;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+      pointer-events: none;
+      line-height: 1.2;
+    }
+
+    .chart-bar .chart-bar-value {
+      top: -32px;
+    }
+
+    .chart-bar-value.positive {
+      color: var(--green);
+    }
+
+    .chart-bar-value.negative {
+      color: var(--red);
+    }
+
+    .chart-zero-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    /* Login screen styles */
+    .login-screen {
+      display: none;
+    }
+    
+    .login-screen:not(.hidden) {
+      display: block;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    #appContainer.hidden {
+      display: none;
+    }
+    
+    #appContainer:not(.hidden) {
+      display: grid;
+    }
+    
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      background: var(--bg-2);
+    }
+    
+    .login-card {
+      max-width: 420px;
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .login-title {
+      margin: 0 0 32px 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    
+    .login-error {
+      display: none;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .login-error:not(:empty) {
+      display: block;
+    }
+    
+    .login-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    
+    .login-buttons .btn {
+      flex: 1;
+    }
+
+    .login-switch {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    .link-button {
+      all: unset;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+      transition: opacity 150ms ease;
+    }
+
+    .link-button:hover {
+      opacity: 0.7;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .checkbox-input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      cursor: pointer;
+      accent-color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .link-text {
+      color: var(--text);
+      text-decoration: underline;
+      cursor: pointer;
+      transition: opacity 150ms ease;
+    }
+
+    .link-text:hover {
+      opacity: 0.7;
+    }
+    
+    /* Table link styles */
+    .table-link {
+      color: var(--primary);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
+    .error-message {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+    }
+    
+    /* Note textarea */
+    .note-textarea {
+      resize: vertical;
+      padding: 10px 14px;
+      min-height: 60px;
+    }
+    
+    /* Note footer */
+    .note-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    /* Settings styles */
+    .settings-section {
+      margin-bottom: 32px;
+    }
+    
+    .settings-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: var(--text);
+    }
+    
+    .settings-section-description {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin: 0 0 20px 0;
+    }
+
+    .theme-toggle-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--surface-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .theme-toggle-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .theme-toggle-label-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .theme-toggle-label-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .theme-toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      background: var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 200ms ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-toggle-switch.active {
+      background: var(--primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 200ms ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .theme-toggle-switch.active::after {
+      transform: translateX(24px);
+    }
+
+    [data-theme="dark"] .theme-toggle-switch {
+      background: var(--surface);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] .theme-toggle-switch.active {
+      background: var(--surface);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] .theme-toggle-switch::after {
+      background: var(--text-dim);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .color-picker-container {
+      margin-bottom: 12px;
+      max-width: 320px;
+    }
+    
+    .color-picker-container-spacing {
+      margin-top: 12px;
+    }
+    
+    .color-picker-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .color-picker-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .color-picker-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: all 150ms ease;
+    }
+    
+    .color-picker-input-wrapper:hover {
+      border-color: var(--border-hover);
+    }
+    
+    .color-picker-input-wrapper:focus-within {
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .color-picker-input {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      transition: all 150ms ease;
+      flex-shrink: 0;
+    }
+    
+    .color-picker-input::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+    }
+    
+    .color-picker-input::-webkit-color-swatch {
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+    }
+    
+    .color-picker-input::-moz-color-swatch {
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+    }
+    
+    .color-picker-input:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .color-picker-input:focus {
+      outline: none;
+      border-color: var(--border);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .color-preview {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--color-preview, #34c759);
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .color-value {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 700;
+      font-family: var(--font);
+      letter-spacing: 0.5px;
+    }
+    
+    [data-theme="dark"] .color-picker-input-wrapper:focus-within {
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-theme="dark"] .color-picker-input:focus {
+      border-color: var(--border);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .settings-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    
+    /* Chart bar height using CSS custom property */
+    .chart-bar {
+      height: var(--bar-height, 4px);
+    }
+    
+    /* Overflow for tables */
+    .table-overflow {
+      overflow: auto;
+    }
+    
+    .stat-row-extra {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    @media (max-width:900px) {
+      #appContainer {
+        grid-template-columns: 1fr;
+        padding: 16px;
+        gap: 16px;
+      }
+
+      .sidebar {
+        display: none
+      }
+      
+      .user-section {
+        display: none
+      }
+
+      table {
+        min-width: 640px
+      }
+
+      .toast-container {
+        right: 12px;
+        bottom: 12px
+      }
+
+      .stats-grid {
+        flex-direction: column
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .stat-card-row {
+        max-width: 100%
+      }
+
+      .donut {
+        --size: 84px;
+        --thickness: 22px
+      }
+
+      .calendar-grid {
+        border-spacing: 2px;
+      }
+      
+      .calendar-grid tbody td {
+        height: 100px;
+        padding: 8px 6px;
+      }
+      
+      .day-number {
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+      
+      .day-pnl {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <!-- Login Container -->
+    <div id="loginContainer" class="login-container">
+      <div class="card login-card">
+        <h2 class="login-title">TradeLog</h2>
+        <div id="loginError" class="login-error"></div>
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <div class="input-wrapper">
+            <input id="loginEmail" class="input" type="email" placeholder="your@email.com" autocomplete="email" />
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <div class="input-wrapper">
+            <input id="loginPassword" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="login-buttons">
+          <button class="btn btn-primary" type="button" id="loginBtn">Login</button>
+        </div>
+        <div class="login-switch">
+          <span>Don't have an account? </span>
+          <button class="link-button" type="button" id="switchToSignupBtn">Sign Up</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signup Container -->
+    <div id="signupContainer" class="login-container hidden">
+      <div class="card login-card">
+        <h2 class="login-title">Create Account</h2>
+        <div id="signupError" class="login-error"></div>
+        <div class="field">
+          <label for="signupEmail">Email</label>
+          <div class="input-wrapper">
+            <input id="signupEmail" class="input" type="email" placeholder="your@email.com" autocomplete="email" />
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label for="signupPassword">Password</label>
+          <div class="input-wrapper">
+            <input id="signupPassword" class="input" type="password" placeholder="••••••••" autocomplete="new-password" />
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="field">
+          <label class="checkbox-label">
+            <input id="termsCheckbox" type="checkbox" class="checkbox-input" />
+            <span>I have read and agree to the <a href="#" class="link-text">Terms of Service</a> and <a href="#" class="link-text">Privacy Policy</a></span>
+          </label>
+        </div>
+        <div class="login-buttons">
+          <button class="btn btn-primary" type="button" id="signupBtn">Create Account</button>
+        </div>
+        <div class="login-switch">
+          <span>Already have an account? </span>
+          <button class="link-button" type="button" id="switchToLoginBtn">Login</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App (hidden until logged in) -->
+  <div id="appContainer" class="hidden">
+  <aside class="sidebar">
+    <div class="sidebar-content">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <div class="brand-title">TradeLog</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-btn active" data-route="/trades" type="button">
+          <span class="nav-btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12h18M3 6h18M3 18h18"/>
+            </svg>
+          </span>
+          All Trades
+        </button>
+        <button class="nav-btn" data-route="/analytics" type="button">
+          <span class="nav-btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18M7 16l4-4 4 4 6-6"/>
+            </svg>
+          </span>
+          Analytics
+        </button>
+        <button class="nav-btn" data-route="/calendar" type="button">
+          <span class="nav-btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+          </span>
+          Calendar
+        </button>
+        <button class="nav-btn" data-route="/settings" type="button">
+          <span class="nav-btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+            </svg>
+          </span>
+          Settings
+        </button>
+      </nav>
+    </div>
+    
+    <div class="user-section">
+      <div class="user-info">
+        <div class="user-label">Logged in as</div>
+        <div class="user-email" id="userEmail">—</div>
+      </div>
+      <button class="user-logout-btn" type="button" id="logoutBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+        Logout
+      </button>
+    </div>
+  </aside>
+
+  <main class="main" id="appMain">
+    <header class="header" id="appHeader">
+      <div class="header-left">
+        <h1 class="page-title" id="pageTitle">Recent Trades</h1>
+        <p class="subtitle" id="pageSubtitle"></p>
+      </div>
+
+      <div class="actions" id="headerActions">
+        <button class="btn btn-primary" type="button" id="newTradeBtn">+ New Trade</button>
+      </div>
+    </header>
+
+    <section id="pageContent">
+      <!-- Content injected by JS -->
+    </section>
+  </main>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="modalBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Add Trade</h3>
+      <button id="modalCloseX" class="modal-close-btn" title="Close" aria-label="Close modal">✕</button>
+
+      <div class="field">
+        <label for="dateInput">Date</label>
+        <input id="dateInput" class="input" type="date" />
+      </div>
+
+      <div class="field">
+        <label for="symbolInput">Symbol</label>
+        <input id="symbolInput" class="input" type="text" placeholder="AAPL" maxlength="10"
+          inputmode="text" />
+      </div>
+
+      <div class="field">
+        <label for="typeInput">Type</label>
+        <select id="typeInput" class="input select-clean" aria-label="Type">
+          <option value="Long" selected>Long</option>
+          <option value="Short">Short</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="rrInput">RR</label>
+        <input id="rrInput" class="input" type="text" placeholder="2.00" inputmode="decimal" maxlength="8" />
+      </div>
+
+      <div class="field">
+        <label for="resultInput">Result</label>
+        <select id="resultInput" class="input select-clean" aria-label="Result">
+          <option value="Win" selected>Win</option>
+          <option value="Loss">Loss</option>
+          <option value="Breakeven">Breakeven</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="pnlInput">P&L (e.g. 120.5 or -50)</label>
+        <input id="pnlInput" class="input" type="text" placeholder="120.50" inputmode="decimal" maxlength="12" />
+      </div>
+
+      <div class="field">
+        <label for="screenshotInput">Screenshot</label>
+        <input id="screenshotInput" class="input" type="text" placeholder="https://www.tradingview.com/..." />
+      </div>
+
+      <div class="field">
+        <label for="noteInput">Notes (optional)</label>
+        <textarea id="noteInput" class="input note-textarea" rows="3" placeholder="Short note..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="button" id="submitTradeBtn">Save</button>
+        <button class="btn-ghost" type="button" id="cancelModalBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="noteModalBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document" aria-labelledby="noteModalTitle" aria-describedby="noteContent">
+      <h3 id="noteModalTitle">Note</h3>
+      <button id="noteCloseX" class="note-close-btn" title="Close note" aria-label="Close note">✕</button>
+
+      <div class="field">
+        <div id="noteContent" class="note-content">—</div>
+      </div>
+
+      <div class="note-footer">
+        <button id="noteCloseFooter" class="note-footer-btn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModalBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="confirm-modal" role="document">
+      <h3 id="confirmModalTitle">Confirm</h3>
+      <p id="confirmModalMessage">Are you sure?</p>
+      <div class="confirm-modal-actions">
+        <button class="btn-ghost" type="button" id="confirmModalCancel">Cancel</button>
+        <button class="btn btn-primary" type="button" id="confirmModalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+  </div> <!-- End appContainer -->
+
+  <script>
+    const ALLOWED_PREFIX = 'https://www.tradingview.com';
+    
+    // Custom Alert and Confirm functions
+    function customAlert(message) {
+      showToast(message, { duration: 4000, type: 'error' });
+    }
+    
+    function customConfirm(message, title = 'Confirm', isDestructive = false) {
+      return new Promise((resolve) => {
+        const backdrop = document.getElementById('confirmModalBackdrop');
+        const titleEl = document.getElementById('confirmModalTitle');
+        const messageEl = document.getElementById('confirmModalMessage');
+        const cancelBtn = document.getElementById('confirmModalCancel');
+        const confirmBtn = document.getElementById('confirmModalConfirm');
+        
+        if (!backdrop || !titleEl || !messageEl || !cancelBtn || !confirmBtn) {
+          resolve(false);
+          return;
+        }
+        
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        // Set button style based on isDestructive
+        if (isDestructive) {
+          confirmBtn.classList.add('btn-destructive');
+          confirmBtn.classList.remove('btn-primary');
+        } else {
+          confirmBtn.classList.remove('btn-destructive');
+          confirmBtn.classList.add('btn-primary');
+        }
+        
+        let resolveOnce = (value) => {
+          resolve(value);
+          resolveOnce = () => {}; // Prevent multiple resolves
+        };
+        
+        const closeModal = () => {
+          backdrop.classList.remove('show');
+          backdrop.classList.add('hiding');
+          backdrop.setAttribute('aria-hidden', 'true');
+          setTimeout(() => {
+            backdrop.style.display = 'none';
+          }, 400);
+        };
+        
+        const handleConfirm = () => {
+          closeModal();
+          resolveOnce(true);
+        };
+        
+        const handleCancel = () => {
+          closeModal();
+          resolveOnce(false);
+        };
+        
+        // Remove old listeners by cloning buttons
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        // Reapply destructive class if needed
+        if (isDestructive) {
+          newConfirmBtn.classList.add('btn-destructive');
+          newConfirmBtn.classList.remove('btn-primary');
+        } else {
+          newConfirmBtn.classList.remove('btn-destructive');
+          newConfirmBtn.classList.add('btn-primary');
+        }
+        
+        newCancelBtn.addEventListener('click', handleCancel);
+        newConfirmBtn.addEventListener('click', handleConfirm);
+        
+        // Close on backdrop click
+        const handleBackdropClick = (e) => {
+          if (e.target === backdrop) {
+            handleCancel();
+          }
+        };
+        
+        backdrop.addEventListener('click', handleBackdropClick);
+        
+        // Close on Escape
+        const handleEscape = (e) => {
+          if (e.key === 'Escape') {
+            handleCancel();
+            document.removeEventListener('keydown', handleEscape);
+          }
+        };
+        
+        document.addEventListener('keydown', handleEscape);
+        
+        // Show modal
+        backdrop.classList.remove('hiding');
+        backdrop.style.display = 'flex';
+        backdrop.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+          backdrop.classList.add('show');
+        });
+      });
+    }
+    
+    // Supabase configuration - these should match your .env file
+    // IMPORTANT: Replace these with your actual Supabase credentials
+    const SUPABASE_URL = 'https://yskeslfxhbsqkboagyqp.supabase.co'; // Replace with your Supabase URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlza2VzbGZ4aGJzcWtib2FneXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNDI2ODIsImV4cCI6MjA4MDYxODY4Mn0.eNuvm_KgK1H-oaqyvAxrf_j1uE_6jnD8DbhRIojZi7E.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0d2NoYnl5dWNtenZ2YXRhdmJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4NDA2ODMsImV4cCI6MjA3OTQxNjY4M30.Z-ODA1d3k6_FF9DE29ksx_PWnbI6NeHvFTzIqiXpUbY'; // Replace with your anon key
+    
+    // Initialize Supabase client with auto-refresh disabled
+    // We use our own auth system via backend API, so we don't need Supabase client-side auth
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {}
+        }
+      }
+    });
+    
+    // Suppress Supabase refresh token errors in console
+    // We handle authentication through our backend API, not Supabase client-side auth
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+      const message = args.join(' ');
+      // Filter out Supabase refresh token errors
+      if (message.includes('Invalid Refresh Token') || 
+          message.includes('Refresh Token Not Found') ||
+          (message.includes('AuthApiError') && message.includes('refresh'))) {
+        return; // Silently ignore these errors
+      }
+      originalConsoleError.apply(console, args);
+    };
+    
+    // Also suppress unhandled promise rejections from Supabase refresh token errors
+    window.addEventListener('unhandledrejection', function(event) {
+      const error = event.reason;
+      if (error && typeof error === 'object') {
+        const errorMessage = error.message || error.toString() || '';
+        if (errorMessage.includes('Invalid Refresh Token') || 
+            errorMessage.includes('Refresh Token Not Found') ||
+            (errorMessage.includes('AuthApiError') && errorMessage.includes('refresh'))) {
+          event.preventDefault(); // Prevent the error from being logged
+          return;
+        }
+      }
+    });
+    
+    // Auth state
+    let currentSession = null;
+    let currentUser = null;
+    let authToken = null;
+    
+    // Check authentication on page load
+    async function checkAuth() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          showLoginScreen();
+          return false;
+        }
+        
+        const res = await fetch('/auth/session', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!res.ok) {
+          localStorage.removeItem('auth_token');
+          showLoginScreen();
+          return false;
+        }
+        
+        const data = await res.json();
+        currentUser = data.user;
+        authToken = token;
+        showApp();
+        updateUserInfo();
+        return true;
+      } catch (err) {
+        console.error('Auth check error:', err);
+        showLoginScreen();
+        return false;
+      }
+    }
+    
+    function showLoginScreen() {
+      const loginScreen = document.getElementById('loginScreen');
+      const appContainer = document.getElementById('appContainer');
+      if (loginScreen) loginScreen.classList.remove('hidden');
+      if (appContainer) appContainer.classList.add('hidden');
+    }
+    
+    function showApp() {
+      const loginScreen = document.getElementById('loginScreen');
+      const appContainer = document.getElementById('appContainer');
+      if (loginScreen) loginScreen.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+      updateUserInfo();
+      loadColorSettings();
+    }
+    
+    function updateUserInfo() {
+      const userEmailEl = document.getElementById('userEmail');
+      if (userEmailEl && currentUser && currentUser.email) {
+        userEmailEl.textContent = currentUser.email;
+      }
+    }
+    
+    function updateHeaderActions(additionalButtons) {
+      const headerActions = document.getElementById('headerActions');
+      if (!headerActions) return;
+      headerActions.innerHTML = additionalButtons || '';
+    }
+    
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorDiv = document.getElementById('loginError');
+      
+      if (!email || !password) {
+        errorDiv.textContent = 'Please enter email and password';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          let errorMessage = 'Login failed';
+          if (data.error === 'invalid_credentials') {
+            errorMessage = 'Invalid email or password';
+          } else if (data.error === 'too_many_attempts') {
+            errorMessage = data.message || 'Too many login attempts. Please try again later.';
+          } else if (data.error === 'invalid_email') {
+            errorMessage = 'Please enter a valid email address';
+          } else if (data.error === 'password_required') {
+            errorMessage = 'Password is required';
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
+          errorDiv.textContent = errorMessage;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
+        // Store token
+        localStorage.setItem('auth_token', data.session.access_token);
+        authToken = data.session.access_token;
+        currentUser = data.user;
+        currentSession = data.session;
+        
+        showApp();
+        updateUserInfo();
+        // Navigate to dashboard
+        navigateTo('/trades', false);
+      } catch (err) {
+        console.error('Login error:', err);
+        errorDiv.textContent = 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    async function handleSignup() {
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const termsCheckbox = document.getElementById('termsCheckbox');
+      const errorDiv = document.getElementById('signupError');
+      
+      if (!email || !password) {
+        errorDiv.textContent = 'Please enter email and password';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      if (password.length < 5) {
+        errorDiv.textContent = 'Password must be at least 5 characters';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if (!termsCheckbox || !termsCheckbox.checked) {
+        errorDiv.textContent = 'Please accept the Terms of Service and Privacy Policy';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      try {
+        const res = await fetch('/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          let errorMessage = 'Signup failed';
+          if (data.error === 'email_already_exists') {
+            errorMessage = 'An account with this email already exists';
+          } else if (data.error === 'invalid_email') {
+            errorMessage = 'Please enter a valid email address';
+          } else if (data.error === 'password_required') {
+            errorMessage = 'Password is required';
+          } else if (data.message) {
+            errorMessage = data.message;
+          } else if (data.error) {
+            errorMessage = data.error;
+          }
+          errorDiv.textContent = errorMessage;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
+        // Check if session is returned (may be null if email confirmation is required)
+        if (data.session && data.session.access_token) {
+          // Store token and log in immediately
+          localStorage.setItem('auth_token', data.session.access_token);
+          authToken = data.session.access_token;
+          currentUser = data.user;
+          currentSession = data.session;
+          
+          showApp();
+          navigateTo('/trades', false);
+          showToast('Account created successfully!', { duration: 3000, type: 'success' });
+        } else {
+          // User created but needs to confirm email
+          const greenRgb = getComputedStyle(document.documentElement).getPropertyValue('--green-rgb') || '52, 199, 89';
+          errorDiv.style.background = `rgba(${greenRgb}, 0.1)`;
+          errorDiv.style.borderColor = 'var(--green)';
+          errorDiv.style.color = 'var(--green)';
+          errorDiv.textContent = 'Confirm your email to finish creating your account. Then you’ll be able to log in.';
+          errorDiv.style.display = 'block';
+          
+          // Clear password field
+          document.getElementById('loginPassword').value = '';
+        }
+      } catch (err) {
+        console.error('Signup error:', err);
+        errorDiv.textContent = 'Signup failed. Please try again.';
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    async function handleLogout() {
+      const confirmed = await customConfirm('Are you sure you want to logout?', 'Logout');
+      if (!confirmed) return;
+      
+      try {
+        await fetch('/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+      
+      localStorage.removeItem('auth_token');
+      authToken = null;
+      currentUser = null;
+      currentSession = null;
+      showLoginScreen();
+    }
+    
+    // Make authenticated fetch requests
+    async function authFetch(url, options = {}) {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        showLoginScreen();
+        throw new Error('Not authenticated');
+      }
+      
+      const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      };
+      
+      return fetch(url, { ...options, headers });
+    }
+
+    // Remove old custom dropdowns
+    function removeOldCustomDropdowns() {
+      // Find all custom dropdown containers in the entire document
+      const oldContainers = document.querySelectorAll('.custom-select-container');
+      oldContainers.forEach(container => {
+        // Find the select element - it should be the next sibling after the container
+        let select = container.nextElementSibling;
+        // If not found as next sibling, try to find it in parent
+        if (!select || !select.classList || !select.classList.contains('select-clean')) {
+          select = container.parentNode ? container.parentNode.querySelector('select.select-clean') : null;
+        }
+        if (select) {
+          select.style.display = '';
+          select.style.position = '';
+          select.style.opacity = '';
+          select.style.pointerEvents = '';
+          select.classList.remove('custom-select-converted');
+        }
+        // Force remove the container immediately
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        } else {
+          container.remove();
+        }
+      });
+      
+      // Also remove any orphaned custom select buttons or dropdowns
+      const orphanedButtons = document.querySelectorAll('.custom-select-button:not(.custom-select-container .custom-select-button)');
+      const orphanedDropdowns = document.querySelectorAll('.custom-select-dropdown:not(.custom-select-container .custom-select-dropdown)');
+      [...orphanedButtons, ...orphanedDropdowns].forEach(el => {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        } else {
+          el.remove();
+        }
+      });
+    }
+
+    // Convert select elements to custom dropdowns
+    function convertSelectsToCustomDropdowns() {
+      // First remove any old custom dropdowns that might still exist
+      const oldContainers = document.querySelectorAll('.custom-select-container');
+      oldContainers.forEach(container => {
+        const select = container.parentNode.querySelector('select.select-clean');
+        if (select) {
+          select.style.display = '';
+          select.style.position = '';
+          select.style.opacity = '';
+          select.style.pointerEvents = '';
+          select.classList.remove('custom-select-converted');
+        }
+        container.remove();
+      });
+      
+      // Helper function to close dropdown with animation
+      const closeDropdown = (button, dropdown) => {
+        if (!button || !dropdown) return;
+        
+        // Remove open class and add closing class
+        dropdown.classList.remove('open');
+        dropdown.classList.add('closing');
+        button.classList.remove('open');
+        button.setAttribute('aria-expanded', 'false');
+        
+        // Remove closing class after animation completes
+        setTimeout(() => {
+          dropdown.classList.remove('closing');
+        }, 200); // Match transition duration
+      };
+      
+      const selects = document.querySelectorAll('select.select-clean:not(.custom-select-converted)');
+      
+      selects.forEach(select => {
+        // Mark as converted
+        select.classList.add('custom-select-converted');
+        
+        // Create container
+        const container = document.createElement('div');
+        container.className = 'custom-select-container';
+        
+        // Get current value and options
+        const currentValue = select.value;
+        const options = Array.from(select.options);
+        
+        // Create button
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'custom-select-button';
+        const selectedOption = select.options[select.selectedIndex];
+        button.textContent = selectedOption?.text || '';
+        if (selectedOption) {
+          button.setAttribute('data-selected-value', selectedOption.value);
+        }
+        button.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-haspopup', 'listbox');
+        
+        // Create dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'custom-select-dropdown';
+        dropdown.setAttribute('role', 'listbox');
+        
+        // Create options
+        options.forEach((option, index) => {
+          if (option.disabled) return;
+          
+          const optionDiv = document.createElement('div');
+          optionDiv.className = 'custom-select-option';
+          if (option.value === currentValue) {
+            optionDiv.classList.add('selected');
+          }
+          optionDiv.textContent = option.text;
+          optionDiv.setAttribute('role', 'option');
+          optionDiv.setAttribute('data-value', option.value);
+          optionDiv.setAttribute('aria-selected', option.value === currentValue ? 'true' : 'false');
+          
+          optionDiv.addEventListener('click', () => {
+            select.value = option.value;
+            button.textContent = option.text;
+            button.setAttribute('data-selected-value', option.value);
+            button.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+            
+            // Update selected state
+            dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+              opt.classList.remove('selected');
+              opt.setAttribute('aria-selected', 'false');
+            });
+            optionDiv.classList.add('selected');
+            optionDiv.setAttribute('aria-selected', 'true');
+            
+            // Close dropdown with animation
+            closeDropdown(button, dropdown);
+            
+            // Trigger change event
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+          
+          dropdown.appendChild(optionDiv);
+        });
+        
+        // Toggle dropdown
+        button.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = button.classList.contains('open');
+          
+          // Close all other dropdowns
+          document.querySelectorAll('.custom-select-button.open').forEach(btn => {
+            if (btn !== button) {
+              const otherDropdown = btn.nextElementSibling;
+              closeDropdown(btn, otherDropdown);
+            }
+          });
+          
+          if (isOpen) {
+            closeDropdown(button, dropdown);
+          } else {
+            button.classList.add('open');
+            dropdown.classList.add('open');
+            button.setAttribute('aria-expanded', 'true');
+          }
+        });
+        
+        // Keyboard navigation
+        button.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            button.click();
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!button.classList.contains('open')) {
+              button.click();
+            } else {
+              const options = dropdown.querySelectorAll('.custom-select-option');
+              const current = dropdown.querySelector('.custom-select-option.selected');
+              let nextIndex = 0;
+              if (current) {
+                nextIndex = Array.from(options).indexOf(current) + 1;
+                if (nextIndex >= options.length) nextIndex = 0;
+              }
+              options[nextIndex]?.click();
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (button.classList.contains('open')) {
+              const options = dropdown.querySelectorAll('.custom-select-option');
+              const current = dropdown.querySelector('.custom-select-option.selected');
+              let prevIndex = options.length - 1;
+              if (current) {
+                prevIndex = Array.from(options).indexOf(current) - 1;
+                if (prevIndex < 0) prevIndex = options.length - 1;
+              }
+              options[prevIndex]?.click();
+            }
+          } else if (e.key === 'Escape') {
+            closeDropdown(button, dropdown);
+          }
+        });
+        
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+          if (!container.contains(e.target)) {
+            closeDropdown(button, dropdown);
+          }
+        });
+        
+        // Assemble
+        container.appendChild(button);
+        container.appendChild(dropdown);
+        
+        // Hide original select but keep it for form submission
+        select.style.display = 'none';
+        select.style.position = 'absolute';
+        select.style.opacity = '0';
+        select.style.pointerEvents = 'none';
+        
+        // Insert container before select
+        select.parentNode.insertBefore(container, select);
+        
+        // Keep select value in sync when changed programmatically
+        const updateButtonFromSelect = () => {
+          const selectedOption = select.options[select.selectedIndex];
+          if (selectedOption) {
+            button.textContent = selectedOption.text;
+            button.setAttribute('data-selected-value', selectedOption.value);
+            // Update selected state in dropdown
+            dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+              opt.classList.remove('selected');
+              opt.setAttribute('aria-selected', 'false');
+              if (opt.getAttribute('data-value') === select.value) {
+                opt.classList.add('selected');
+                opt.setAttribute('aria-selected', 'true');
+              }
+            });
+          }
+        };
+        
+        // Watch for value changes
+        const observer = new MutationObserver(updateButtonFromSelect);
+        observer.observe(select, { attributes: true, attributeFilter: ['value'] });
+        
+        // Also listen to change events
+        select.addEventListener('change', updateButtonFromSelect);
+      });
+    }
+
+    // Update custom dropdown when select options change
+    function updateCustomDropdownFromSelect(select) {
+      const container = select.parentNode.querySelector('.custom-select-container');
+      if (!container) {
+        // If no custom dropdown exists, create one
+        if (!select.classList.contains('custom-select-converted')) {
+          convertSelectsToCustomDropdowns();
+        }
+        return;
+      }
+
+      const button = container.querySelector('.custom-select-button');
+      const dropdown = container.querySelector('.custom-select-dropdown');
+      if (!button || !dropdown) return;
+
+      // Clear existing options
+      dropdown.innerHTML = '';
+
+      // Get current value
+      const currentValue = select.value;
+      const options = Array.from(select.options);
+
+      // Recreate options
+      options.forEach((option) => {
+        if (option.disabled) return;
+
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'custom-select-option';
+        if (option.value === currentValue) {
+          optionDiv.classList.add('selected');
+        }
+        optionDiv.textContent = option.text;
+        optionDiv.setAttribute('role', 'option');
+        optionDiv.setAttribute('data-value', option.value);
+        optionDiv.setAttribute('aria-selected', option.value === currentValue ? 'true' : 'false');
+
+        optionDiv.addEventListener('click', () => {
+          select.value = option.value;
+          button.textContent = option.text;
+          button.setAttribute('data-selected-value', option.value);
+          button.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+
+          // Update selected state
+          dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.classList.remove('selected');
+            opt.setAttribute('aria-selected', 'false');
+          });
+          optionDiv.classList.add('selected');
+          optionDiv.setAttribute('aria-selected', 'true');
+
+          // Close dropdown
+          button.classList.remove('open');
+          dropdown.classList.remove('open');
+          button.setAttribute('aria-expanded', 'false');
+
+          // Trigger change event
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        dropdown.appendChild(optionDiv);
+      });
+
+      // Update button text
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption) {
+        button.textContent = selectedOption.text;
+        button.setAttribute('data-selected-value', selectedOption.value);
+      }
+    }
+
+    function renderTradesView() {
+      // Remove old custom dropdowns before rendering new content
+      removeOldCustomDropdowns();
+      
+      setPageTitleWithAnimation('All Trades');
+      updateHeaderActions('<button class="btn btn-primary" type="button" id="newTradeBtnHeader">+ New Trade</button>');
+
+      const content = `
+        <section class="card" aria-labelledby="recent-trades" style="padding-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="recent-trades" style="margin: 0;">Recent trades</h2>
+            <button class="btn btn-export-pdf" type="button" id="exportPdfBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export PDF
+            </button>
+          </div>
+          <div class="table-overflow">
+            <table role="table" aria-label="Recent trades table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Symbol</th>
+                  <th>Type</th>
+                  <th>RR</th>
+                  <th>Result</th>
+                  <th>P&amp;L</th>
+                  <th>Screenshot</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="journalBody"></tbody>
+            </table>
+          </div>
+        </section>
+      `;
+      document.getElementById('pageContent').innerHTML = content;
+      
+      // Only load trades if user is authenticated
+      if (currentUser && authToken) {
+        loadTrades();
+      }
+      
+      // Convert selects to custom dropdowns
+      setTimeout(() => convertSelectsToCustomDropdowns(), 0);
+    }
+
+    function renderAnalyticsView(year = null, month = null, symbol = null) {
+      // Remove old custom dropdowns before rendering new content
+      removeOldCustomDropdowns();
+      
+      setPageTitleWithAnimation('Analytics');
+      updateHeaderActions('');
+
+      const content = `
+        <section class="card" aria-labelledby="analytics-stats">
+          <div class="calendar-controls">
+            <label for="analyticsYearSelect">Year:</label>
+            <select id="analyticsYearSelect" class="select-clean" aria-label="Year">
+              <option value="all">All Years</option>
+            </select>
+            <label for="analyticsMonthSelect">Month:</label>
+            <select id="analyticsMonthSelect" class="select-clean" aria-label="Month">
+              <option value="all">All Months</option>
+            </select>
+            <label for="analyticsSymbolSelect">Symbol:</label>
+            <select id="analyticsSymbolSelect" class="select-clean" aria-label="Symbol">
+              <option value="all">All Symbols</option>
+            </select>
+          </div>
+
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card stat-card-featured" style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+              <div class="stat-info"><div class="stat-label">Win rate</div><div class="stat-number" id="winRateCard">—</div></div>
+              <div class="donut" id="winRateDonut"><div class="donut-label" id="winRateLabel">—</div></div>
+            </div>
+            <div class="stat-card stat-card-featured"><div class="stat-info"><div class="stat-label">Average RR</div><div class="stat-number" id="avgRr">—</div></div></div>
+            <div class="stat-card stat-card-featured"><div class="stat-info"><div class="stat-label">Total P&L</div><div class="stat-number" id="totalPnl">—</div></div></div>
+            <div class="stat-card stat-card-featured"><div class="stat-info"><div class="stat-label">Total trades</div><div class="stat-number" id="totalTrades">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Winning positions</div><div class="stat-number win" id="winsCount">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Losing positions</div><div class="stat-number loss" id="lossCount">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Breakeven positions</div><div class="stat-number be" id="beCount">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Long positions</div><div class="stat-number win" id="longCount">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Short positions</div><div class="stat-number loss" id="shortCount">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Biggest profit</div><div class="stat-number" id="biggestProfit">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Biggest loss</div><div class="stat-number" id="biggestLoss">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Return on Long</div><div class="stat-number" id="returnLong">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Return on Short</div><div class="stat-number" id="returnShort">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Return on Winners</div><div class="stat-number" id="returnWinners">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Return on Losers</div><div class="stat-number" id="returnLosers">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">AVG P&L (wins)</div><div class="stat-number" id="avgPnlWin">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">AVG P&L (losses)</div><div class="stat-number" id="avgPnlLoss">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Expectancy per trade</div><div class="stat-number" id="expectancyV2">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Longest winning streak</div><div class="stat-number win" id="longestWinStreak">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Longest losing streak</div><div class="stat-number loss" id="longestLossStreak">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Day with most wins</div><div class="stat-number" id="topWinningDay">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Day with most losses</div><div class="stat-number" id="topLosingDay">—</div></div></div>
+            <div class="stat-card"><div class="stat-info"><div class="stat-label">Most effective instrument</div><div class="stat-number win" id="mostEffectiveInstrument">—</div></div></div>
+          </div>
+
+          <div class="week-chart">
+            <h3>P&L by Day of Week</h3>
+            <div class="chart-bars" id="weekChartBars">
+              <!-- Chart will be rendered here -->
+            </div>
+          </div>
+        </section>
+      `;
+      document.getElementById('pageContent').innerHTML = content;
+
+      // Populate year and month dropdowns
+      const ySel = document.getElementById('analyticsYearSelect');
+      const mSel = document.getElementById('analyticsMonthSelect');
+      const sSel = document.getElementById('analyticsSymbolSelect');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth();
+
+      // Build year options
+      const allYearsOpt = ySel.querySelector('option[value="all"]');
+      if (year === null) allYearsOpt.selected = true;
+      for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = String(y);
+        if (year !== null && y === year) opt.selected = true;
+        ySel.appendChild(opt);
+      }
+
+      // Build month options
+      const allMonthsOpt = mSel.querySelector('option[value="all"]');
+      if (month === null) allMonthsOpt.selected = true;
+      monthNames.forEach((m, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = m;
+        if (month !== null && i === month) opt.selected = true;
+        mSel.appendChild(opt);
+      });
+
+      // Handle filter changes
+      const handleFilterChange = () => {
+        const selectedYear = ySel.value === 'all' ? null : parseInt(ySel.value, 10);
+        const selectedMonth = mSel.value === 'all' ? null : parseInt(mSel.value, 10);
+        const selectedSymbol = sSel.value === 'all' ? null : sSel.value;
+        renderAnalyticsView(selectedYear, selectedMonth, selectedSymbol);
+      };
+
+      ySel.onchange = handleFilterChange;
+      mSel.onchange = handleFilterChange;
+      sSel.onchange = handleFilterChange;
+
+      authFetch('/trades')
+        .then(res => {
+          if (!res.ok) {
+            if (res.status === 401) {
+              showLoginScreen();
+              return Promise.reject('Unauthorized');
+            }
+            return Promise.reject('Fetch error');
+          }
+          return res.json();
+        })
+        .then(data => {
+          // Populate symbol options
+          const uniqueSymbols = new Set();
+          data.forEach(t => {
+            if (t.symbol && t.symbol !== '-') uniqueSymbols.add(t.symbol);
+          });
+          const sortedSymbols = Array.from(uniqueSymbols).sort();
+
+          const allSymbolsOpt = sSel.querySelector('option[value="all"]');
+          if (symbol === null) allSymbolsOpt.selected = true;
+
+          sortedSymbols.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            if (symbol !== null && s === symbol) opt.selected = true;
+            sSel.appendChild(opt);
+          });
+
+          // Filter trades by selected year, month, and symbol
+          let filteredData = data;
+          if (year !== null || month !== null || symbol !== null) {
+            filteredData = data.filter(entry => {
+              const parts = String(entry.date || '').split('/');
+              if (parts.length !== 3) return false;
+              const dd = parseInt(parts[0], 10);
+              const mm = parseInt(parts[1], 10) - 1; // 0-indexed
+              const yy = parseInt(parts[2], 10);
+
+              let matchYear = year === null || yy === year;
+              let matchMonth = month === null || mm === month;
+              let matchSymbol = symbol === null || entry.symbol === symbol;
+              return matchYear && matchMonth && matchSymbol;
+            });
+          }
+
+          const stats = computeAnalyticsFromTrades(filteredData);
+          applyAnalyticsToDOM(stats);
+          const donut = document.getElementById('winRateDonut');
+          const label = document.getElementById('winRateLabel');
+          const winRateCard = document.getElementById('winRateCard');
+          const total = stats.total;
+          const wins = stats.wins;
+          if (donut && label) {
+            // Add animation to win rate elements
+            if (label) {
+              label.classList.add('animating');
+              void label.offsetHeight;
+            }
+            if (winRateCard) {
+              winRateCard.classList.add('animating');
+              void winRateCard.offsetHeight;
+            }
+            
+            // Ensure initial state is set
+            donut.style.setProperty('--deg', '0deg');
+            
+            setTimeout(() => {
+              requestAnimationFrame(() => {
+                if (total > 0) {
+                  const pct = (wins / total) * 100;
+                  const deg = (pct / 100) * 360;
+                  donut.style.setProperty('--deg', deg + 'deg');
+                  const pctText = (Math.round(pct * 10) / 10) + '%';
+                  label.textContent = pctText;
+                  if (winRateCard) winRateCard.textContent = pctText;
+                } else {
+                  donut.style.setProperty('--deg', '0deg');
+                  label.textContent = '—';
+                  if (winRateCard) winRateCard.textContent = '—';
+                }
+                
+                // Remove animation to trigger fade-in
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    if (label) label.classList.remove('animating');
+                    if (winRateCard) winRateCard.classList.remove('animating');
+                  });
+                });
+              });
+            }, 100);
+          }
+
+          // Render week chart
+          renderWeekChart(filteredData);
+          
+          // Convert selects to custom dropdowns after all options are added
+          setTimeout(() => {
+            convertSelectsToCustomDropdowns();
+          }, 0);
+        })
+        .catch(() => {
+          applyAnalyticsToDOM({
+            total: 0, wins: 0, losses: 0, breakevens: 0,
+            avgRr: null, biggestProfit: null, biggestLoss: null,
+            returnLong: 0, returnShort: 0, returnWinners: 0, returnLosers: 0,
+            avgPnlWin: null, avgPnlLoss: null, topWinningDay: null, topLosingDay: null, expectancyV2: null, longestWinStreak: 0, longestLossStreak: 0, longCount: 0, shortCount: 0
+          });
+          renderWeekChart([]);
+          
+          // Convert selects to custom dropdowns even if fetch fails
+          setTimeout(() => {
+            convertSelectsToCustomDropdowns();
+          }, 0);
+        });
+    }
+
+    // Calendar view with week starting Monday
+    function renderSettingsView() {
+      setPageTitleWithAnimation('Settings');
+      updateHeaderActions('');
+
+      // Load saved colors or use defaults
+      const savedGreen = localStorage.getItem('accentColorGreen') || '#34c759';
+      const savedRed = localStorage.getItem('accentColorRed') || '#ff453a';
+
+      // Load saved theme preference
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      const isDarkMode = savedTheme === 'dark';
+
+      const content = `
+        <section class="card" aria-labelledby="settings-title">
+          <h2 id="settings-title">Appearance Settings</h2>
+          
+          <div class="settings-section">
+            <h3 class="settings-section-title">Theme</h3>
+            <p class="settings-section-description">Switch between light and dark mode.</p>
+            
+            <div class="theme-toggle-container">
+              <div class="theme-toggle-label">
+                <span class="theme-toggle-label-text">Dark Mode</span>
+                <span class="theme-toggle-label-desc">Enable dark theme for better viewing in low light</span>
+              </div>
+              <div class="theme-toggle-switch ${isDarkMode ? 'active' : ''}" id="themeToggle" role="button" tabindex="0" aria-label="Toggle dark mode"></div>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h3 class="settings-section-title">Accent Colors</h3>
+            <p class="settings-section-description">Customize the colors used for positive (wins) and negative (losses) indicators throughout the app.</p>
+            
+            <div class="color-picker-container">
+              <div class="color-picker-wrapper">
+                <div class="color-picker-label">Positive Color (Wins)</div>
+                <div class="color-picker-input-wrapper">
+                  <input type="color" id="positiveColorPicker" class="color-picker-input" value="${savedGreen}" />
+                  <span class="color-value">positive</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="color-picker-container color-picker-container-spacing">
+              <div class="color-picker-wrapper">
+                <div class="color-picker-label">Negative Color (Losses)</div>
+                <div class="color-picker-input-wrapper">
+                  <input type="color" id="negativeColorPicker" class="color-picker-input" value="${savedRed}" />
+                  <span class="color-value">negative</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="settings-buttons">
+              <button class="btn btn-primary" type="button" id="saveColorBtn">Save Changes</button>
+              <button class="btn btn-ghost" type="button" id="resetColorBtn">Reset to Default</button>
+            </div>
+          </div>
+        </section>
+      `;
+      
+      document.getElementById('pageContent').innerHTML = content;
+      
+      // Attach event listeners for live preview
+      const positivePicker = document.getElementById('positiveColorPicker');
+      const negativePicker = document.getElementById('negativeColorPicker');
+      
+      if (positivePicker) {
+        positivePicker.addEventListener('input', (e) => {
+          const color = e.target.value;
+          const colorValue = positivePicker.parentElement.querySelector('.color-value');
+          if (colorValue) {
+            colorValue.textContent = 'positive';
+          }
+          applyColors(color, document.getElementById('negativeColorPicker').value, false);
+        });
+      }
+      
+      if (negativePicker) {
+        negativePicker.addEventListener('input', (e) => {
+          const color = e.target.value;
+          const colorValue = negativePicker.parentElement.querySelector('.color-value');
+          if (colorValue) {
+            colorValue.textContent = 'negative';
+          }
+          applyColors(document.getElementById('positiveColorPicker').value, color, false);
+        });
+      }
+      
+      // Apply saved colors on load
+      applyColors(savedGreen, savedRed, false);
+
+      // Attach theme toggle event listener
+      const themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+        themeToggle.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleTheme();
+          }
+        });
+      }
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      
+      // Update toggle switch state
+      const themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        if (newTheme === 'dark') {
+          themeToggle.classList.add('active');
+        } else {
+          themeToggle.classList.remove('active');
+        }
+      }
+    }
+
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+    
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+    
+    function applyColors(greenColor, redColor, save = true) {
+      const root = document.documentElement;
+      root.style.setProperty('--green', greenColor);
+      root.style.setProperty('--red', redColor);
+      
+      // Calculate lighter shade for gradients
+      const lightGreen = lightenColor(greenColor, 20);
+      const lightRed = lightenColor(redColor, 20);
+      root.style.setProperty('--green-light', lightGreen);
+      root.style.setProperty('--red-light', lightRed);
+      
+      // Convert to RGB for rgba() usage in CSS
+      const greenRgb = hexToRgb(greenColor);
+      const redRgb = hexToRgb(redColor);
+      
+      if (greenRgb) {
+        root.style.setProperty('--green-rgb', `${greenRgb.r}, ${greenRgb.g}, ${greenRgb.b}`);
+      }
+      if (redRgb) {
+        root.style.setProperty('--red-rgb', `${redRgb.r}, ${redRgb.g}, ${redRgb.b}`);
+      }
+      
+      if (save) {
+        localStorage.setItem('accentColorGreen', greenColor);
+        localStorage.setItem('accentColorRed', redColor);
+      }
+    }
+    
+    function lightenColor(color, percent) {
+      const num = parseInt(color.replace('#', ''), 16);
+      const r = Math.min(255, (num >> 16) + percent * 2.55);
+      const g = Math.min(255, ((num >> 8) & 0x00FF) + percent * 2.55);
+      const b = Math.min(255, (num & 0x0000FF) + percent * 2.55);
+      return '#' + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1);
+    }
+    
+    function saveColorSettings() {
+      const greenColor = document.getElementById('positiveColorPicker').value;
+      const redColor = document.getElementById('negativeColorPicker').value;
+      
+      applyColors(greenColor, redColor, true);
+      showToast('Color settings saved!', { duration: 3000, type: 'success' });
+    }
+    
+    function resetColorSettings() {
+      const defaultGreen = '#34c759';
+      const defaultRed = '#ff453a';
+      
+      const positivePicker = document.getElementById('positiveColorPicker');
+      const negativePicker = document.getElementById('negativeColorPicker');
+      
+      if (positivePicker) {
+        positivePicker.value = defaultGreen;
+        const colorValue = positivePicker.parentElement.querySelector('.color-value');
+        if (colorValue) {
+          colorValue.textContent = 'positive';
+        }
+      }
+      
+      if (negativePicker) {
+        negativePicker.value = defaultRed;
+        const colorValue = negativePicker.parentElement.querySelector('.color-value');
+        if (colorValue) {
+          colorValue.textContent = 'negative';
+        }
+      }
+      
+      applyColors(defaultGreen, defaultRed, true);
+      showToast('Colors reset to default', { duration: 3000, type: 'success' });
+    }
+    
+    function loadColorSettings() {
+      const savedGreen = localStorage.getItem('accentColorGreen');
+      const savedRed = localStorage.getItem('accentColorRed');
+      
+      if (savedGreen || savedRed) {
+        applyColors(savedGreen || '#34c759', savedRed || '#ff453a', false);
+      }
+    }
+
+    function renderCalendarView(year = new Date().getFullYear(), month = new Date().getMonth()) {
+      // Remove old custom dropdowns before rendering new content
+      removeOldCustomDropdowns();
+      
+      setPageTitleWithAnimation('Calendar');
+      updateHeaderActions('');
+
+      const content = `
+        <section class="card" aria-labelledby="calendar-view">
+          <div class="calendar-controls">
+            <label for="yearSelect">Year:</label>
+            <select id="yearSelect" class="select-clean" aria-label="Year"></select>
+            <label for="monthSelect">Month:</label>
+            <select id="monthSelect" class="select-clean" aria-label="Month"></select>
+            <button class="btn btn-ghost" type="button" id="prevMonthBtn">Prev</button>
+            <button class="btn btn-ghost" type="button" id="nextMonthBtn">Next</button>
+          </div>
+
+          <table class="calendar-grid" role="grid" aria-label="Monthly P&L calendar">
+            <thead>
+              <tr>
+                <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th>
+                <th>Fri</th><th>Sat</th><th>Sun</th>
+              </tr>
+            </thead>
+            <tbody id="calendarBody"></tbody>
+          </table>
+        </section>
+      `;
+      
+      // Remove old dropdowns one more time right before setting innerHTML
+      removeOldCustomDropdowns();
+      document.getElementById('pageContent').innerHTML = content;
+
+      const ySel = document.getElementById('yearSelect');
+      const mSel = document.getElementById('monthSelect');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+      ySel.innerHTML = '';
+      for (let y = year - 5; y <= year + 5; y++) {
+        const opt = document.createElement('option'); opt.value = y; opt.textContent = String(y);
+        if (y === year) opt.selected = true;
+        ySel.appendChild(opt);
+      }
+
+      mSel.innerHTML = '';
+      monthNames.forEach((m, i) => {
+        const opt = document.createElement('option'); opt.value = i; opt.textContent = m;
+        if (i === month) opt.selected = true;
+        mSel.appendChild(opt);
+      });
+
+      ySel.onchange = () => renderCalendarView(parseInt(ySel.value, 10), parseInt(mSel.value, 10));
+      mSel.onchange = () => renderCalendarView(parseInt(ySel.value, 10), parseInt(mSel.value, 10));
+      document.getElementById('prevMonthBtn').onclick = () => {
+        let y = year, m = month - 1;
+        if (m < 0) { m = 11; y = y - 1; }
+        renderCalendarView(y, m);
+      };
+      document.getElementById('nextMonthBtn').onclick = () => {
+        let y = year, m = month + 1;
+        if (m > 11) { m = 0; y = y + 1; }
+        renderCalendarView(y, m);
+      };
+
+      // Convert selects to custom dropdowns - ensure old ones are removed first
+      removeOldCustomDropdowns();
+      // Use immediate conversion to avoid flickering
+      convertSelectsToCustomDropdowns();
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      // map JS getDay (0=Sun..6=Sat) to Monday-first index 0=Mon..6=Sun
+      const startWeekday = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = lastDay.getDate();
+
+      const tbody = document.getElementById('calendarBody');
+      tbody.innerHTML = '';
+      let row = document.createElement('tr');
+
+      for (let i = 0; i < startWeekday; i++) {
+        const td = document.createElement('td');
+        td.setAttribute('aria-hidden', 'true');
+        row.appendChild(td);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const td = document.createElement('td');
+        const cellId = `pnl-${year}-${month}-${d}`;
+        const tradesCountId = `trades-count-${year}-${month}-${d}`;
+        td.innerHTML = `
+          <div class="day-number">${d}</div>
+          <div class="day-pnl" id="${cellId}">—</div>
+          <div class="day-trades-count" id="${tradesCountId}">—</div>
+        `;
+        row.appendChild(td);
+        const weekdayIndex = (startWeekday + d - 1) % 7;
+        if (weekdayIndex === 6 || d === daysInMonth) {
+          tbody.appendChild(row);
+          row = document.createElement('tr');
+        }
+      }
+
+      authFetch('/trades')
+        .then(res => {
+          if (!res.ok) {
+            if (res.status === 401) {
+              showLoginScreen();
+              return Promise.reject('Unauthorized');
+            }
+            return Promise.reject('Fetch error');
+          }
+          return res.json();
+        })
+        .then(data => {
+          const daily = new Map();
+          const dailyTradesCount = new Map();
+          for (const entry of data) {
+            const parts = String(entry.date || '').split('/');
+            if (parts.length !== 3) continue;
+            const dd = parseInt(parts[0], 10);
+            const mm = parseInt(parts[1], 10) - 1;
+            const yy = parseInt(parts[2], 10);
+            if (yy === year && mm === month && Number.isInteger(dd)) {
+              // pnl is now REAL (number) in database
+              const pnlNum = (entry.pnl != null && entry.pnl !== '') ? (typeof entry.pnl === 'number' ? entry.pnl : parseFloat(String(entry.pnl).replace(',', '.'))) : null;
+              const prev = daily.get(dd) || 0;
+              daily.set(dd, prev + (pnlNum != null && Number.isFinite(pnlNum) ? pnlNum : 0));
+              
+              // Count trades
+              const prevCount = dailyTradesCount.get(dd) || 0;
+              dailyTradesCount.set(dd, prevCount + 1);
+            }
+          }
+
+          for (const [day, sum] of daily.entries()) {
+            const el = document.getElementById(`pnl-${year}-${month}-${day}`);
+            const countEl = document.getElementById(`trades-count-${year}-${month}-${day}`);
+            if (!el) continue;
+            
+            // Add animation for fade-out
+            el.classList.add('animating');
+            if (countEl) countEl.classList.add('animating');
+            
+            // Force reflow to ensure animation starts
+            void el.offsetHeight;
+            
+            setTimeout(() => {
+              const rounded = Math.round(sum * 100) / 100;
+              const display = Number.isInteger(rounded) ? String(rounded) : String(rounded);
+              const sign = rounded > 0 ? '+' : '';
+              el.textContent = 'P&L: ' + sign + display + '$';
+              el.classList.remove('pnl-positive', 'pnl-negative', 'pnl-zero');
+              if (rounded > 0) el.classList.add('pnl-positive');
+              else if (rounded < 0) el.classList.add('pnl-negative');
+              else el.classList.add('pnl-zero');
+              
+              // Update trades count
+              const tradesCount = dailyTradesCount.get(day) || 0;
+              if (countEl) {
+                countEl.textContent = tradesCount + (tradesCount === 1 ? ' trade' : ' trades');
+              }
+              
+              // Remove animation to trigger fade-in
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  el.classList.remove('animating');
+                  if (countEl) countEl.classList.remove('animating');
+                });
+              });
+            }, 300);
+          }
+        })
+        .catch(() => { /* leave defaults */ });
+    }
+
+
+    function parsePnlNumber(pnlRaw) {
+      if (pnlRaw == null) return null;
+      const s = String(pnlRaw).trim();
+      if (s === '') return null;
+      const cleaned = s.replace(',', '.').replace(/[^\d.-]/g, '');
+      const n = parseFloat(cleaned);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function fmtNum(v) {
+      if (v == null || Number.isNaN(v)) return '—';
+      const n = Number(v);
+      return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+    }
+
+    function computeAnalyticsFromTrades(trades) {
+      const stats = { total: 0, wins: 0, losses: 0, breakevens: 0, avgRr: null, biggestProfit: null, biggestLoss: null, returnLong: 0, returnShort: 0, returnWinners: 0, returnLosers: 0, avgPnlWin: null, avgPnlLoss: null, topWinningDay: null, topLosingDay: null, expectancyV2: null, longestWinStreak: 0, longestLossStreak: 0, totalPnl: 0, mostEffectiveInstrument: null, longCount: 0, shortCount: 0 };
+      if (!Array.isArray(trades) || trades.length === 0) return stats;
+
+      let rrSum = 0, rrCount = 0;
+      let pnlWinsSum = 0, pnlWinsCount = 0;
+      let pnlLossSum = 0, pnlLossCount = 0;
+      const dowWins = new Map();
+      const dowLosses = new Map();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      for (const t of trades) {
+        stats.total++;
+        const result = (t.result || '').toLowerCase();
+        const type = (t.type || '').toLowerCase();
+        // pnl is now stored as REAL in database, but handle both number and string for compatibility
+        const pnlNum = (typeof t.pnl === 'number') ? t.pnl : parsePnlNumber(t.pnl);
+
+        if (/win/i.test(result)) stats.wins++;
+        else if (/loss/i.test(result)) stats.losses++;
+        else if (/breakeven/i.test(result) || /break ?even/i.test(result)) stats.breakevens++;
+
+        // rr is now stored as REAL in database, but handle both number and string for compatibility
+        const rrN = (typeof t.rr === 'number') ? t.rr : parseFloat(String(t.rr || '').replace(',', '.'));
+        if (Number.isFinite(rrN)) { rrSum += rrN; rrCount++; }
+
+        if (pnlNum != null) {
+          stats.totalPnl += pnlNum;
+          if (stats.biggestProfit == null || pnlNum > stats.biggestProfit) stats.biggestProfit = pnlNum;
+          if (pnlNum < 0 && (stats.biggestLoss == null || pnlNum < stats.biggestLoss)) stats.biggestLoss = pnlNum;
+        }
+
+        if (type === 'long') { 
+          stats.longCount++;
+          if (pnlNum != null) stats.returnLong += pnlNum; 
+        }
+        else if (type === 'short') { 
+          stats.shortCount++;
+          if (pnlNum != null) stats.returnShort += pnlNum; 
+        }
+
+        if (/win/i.test(result)) {
+          if (pnlNum != null) { stats.returnWinners += pnlNum; pnlWinsSum += pnlNum; pnlWinsCount++; }
+          const parts = String(t.date || '').split('/');
+          if (parts.length === 3) {
+            const dd = parseInt(parts[0], 10);
+            const mm = parseInt(parts[1], 10) - 1;
+            const yy = parseInt(parts[2], 10);
+            if (Number.isInteger(dd) && Number.isInteger(mm) && Number.isInteger(yy)) {
+              const dateObj = new Date(yy, mm, dd);
+              const dow = dayNames[dateObj.getDay()];
+              dowWins.set(dow, (dowWins.get(dow) || 0) + 1);
+            }
+          }
+        } else if (/loss/i.test(result)) {
+          if (pnlNum != null) { stats.returnLosers += pnlNum; pnlLossSum += pnlNum; pnlLossCount++; }
+          const parts = String(t.date || '').split('/');
+          if (parts.length === 3) {
+            const dd = parseInt(parts[0], 10);
+            const mm = parseInt(parts[1], 10) - 1;
+            const yy = parseInt(parts[2], 10);
+            if (Number.isInteger(dd) && Number.isInteger(mm) && Number.isInteger(yy)) {
+              const dateObj = new Date(yy, mm, dd);
+              const dow = dayNames[dateObj.getDay()];
+              dowLosses.set(dow, (dowLosses.get(dow) || 0) + 1);
+            }
+          }
+        }
+      }
+
+      stats.avgRr = rrCount > 0 ? (rrSum / rrCount) : null;
+      stats.avgPnlWin = pnlWinsCount > 0 ? (pnlWinsSum / pnlWinsCount) : null;
+      stats.avgPnlLoss = pnlLossCount > 0 ? (pnlLossSum / pnlLossCount) : null;
+
+      // Calculate Expectancy per trade: (Win Rate × Average Win) – (Loss Rate × Average Loss)
+      if (stats.total > 0 && stats.avgPnlWin != null && stats.avgPnlLoss != null) {
+        const winRate = stats.wins / stats.total;
+        const lossRate = stats.losses / stats.total;
+        stats.expectancyV2 = (winRate * stats.avgPnlWin) - (lossRate * Math.abs(stats.avgPnlLoss));
+      } else {
+        stats.expectancyV2 = null;
+      }
+
+      // Calculate longest winning and losing streaks
+      // Sort trades by date chronologically (DD/MM/YYYY format)
+      const sortedTrades = [...trades].sort((a, b) => {
+        const partsA = String(a.date || '').split('/');
+        const partsB = String(b.date || '').split('/');
+        if (partsA.length !== 3 || partsB.length !== 3) return 0;
+        const dateA = new Date(parseInt(partsA[2], 10), parseInt(partsA[1], 10) - 1, parseInt(partsA[0], 10));
+        const dateB = new Date(parseInt(partsB[2], 10), parseInt(partsB[1], 10) - 1, parseInt(partsB[0], 10));
+        return dateA - dateB;
+      });
+
+      let currentWinStreak = 0;
+      let currentLossStreak = 0;
+      let maxWinStreak = 0;
+      let maxLossStreak = 0;
+
+      for (const t of sortedTrades) {
+        const result = (t.result || '').toLowerCase();
+
+        if (/win/i.test(result)) {
+          currentWinStreak++;
+          currentLossStreak = 0;
+          if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
+        } else if (/loss/i.test(result)) {
+          currentLossStreak++;
+          currentWinStreak = 0;
+          if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
+        }
+        // Breakeven resets both streaks
+        else if (/breakeven/i.test(result) || /break ?even/i.test(result)) {
+          currentWinStreak = 0;
+          currentLossStreak = 0;
+        }
+      }
+
+      stats.longestWinStreak = maxWinStreak;
+      stats.longestLossStreak = maxLossStreak;
+
+      let topWinDay = null;
+      let topWinCount = 0;
+      for (const [day, count] of dowWins.entries()) {
+        if (count > topWinCount) {
+          topWinDay = day;
+          topWinCount = count;
+        }
+      }
+      stats.topWinningDay = topWinDay ? `${topWinDay} (${topWinCount})` : null;
+
+      let topLossDay = null;
+      let topLossCount = 0;
+      for (const [day, count] of dowLosses.entries()) {
+        if (count > topLossCount) {
+          topLossDay = day;
+          topLossCount = count;
+        }
+      }
+      stats.topLosingDay = topLossDay ? `${topLossDay} (${topLossCount})` : null;
+
+      // Calculate most effective instrument (symbol with most wins)
+      const symbolWins = new Map();
+      for (const t of trades) {
+        const result = (t.result || '').toLowerCase();
+        if (/win/i.test(result)) {
+          const symbol = t.symbol || '';
+          if (symbol && symbol !== '-') {
+            symbolWins.set(symbol, (symbolWins.get(symbol) || 0) + 1);
+          }
+        }
+      }
+
+      // Find symbol with most wins
+      let mostEffectiveSymbol = null;
+      let maxWins = 0;
+      for (const [symbol, wins] of symbolWins.entries()) {
+        if (wins > maxWins) {
+          mostEffectiveSymbol = symbol;
+          maxWins = wins;
+        }
+      }
+
+      // Check if there's only one symbol with max wins (no ties)
+      if (mostEffectiveSymbol && maxWins > 0) {
+        let countWithMaxWins = 0;
+        for (const [symbol, wins] of symbolWins.entries()) {
+          if (wins === maxWins) {
+            countWithMaxWins++;
+          }
+        }
+        // Only set if there's exactly one symbol with max wins
+        if (countWithMaxWins === 1) {
+          stats.mostEffectiveInstrument = mostEffectiveSymbol;
+        }
+      }
+
+      return stats;
+    }
+
+    function applyAnalyticsToDOM(stats) {
+      const setStat = (id, val, isCurrency = false) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        // Add animation class for fade-out
+        el.classList.add('animating');
+        
+        // Force reflow to ensure animation starts
+        void el.offsetHeight;
+        
+        // Update after fade-out animation
+        setTimeout(() => {
+          if (val == null || Number.isNaN(val)) {
+            el.textContent = '—';
+            el.className = 'stat-number';
+          } else {
+            const sign = (isCurrency && val > 0) ? '+' : '';
+            el.textContent = sign + fmtNum(val) + (isCurrency ? '$' : '');
+            if (val > 0) el.className = 'stat-number win';
+            else if (val < 0) el.className = 'stat-number loss';
+            else el.className = 'stat-number be';
+          }
+          
+          // Remove animation class to trigger fade-in
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              el.classList.remove('animating');
+            });
+          });
+        }, 300);
+      };
+
+      const animateStat = (id, value) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        // Add animation class for fade-out
+        el.classList.add('animating');
+        
+        // Force reflow to ensure animation starts
+        void el.offsetHeight;
+        
+        // Update after fade-out animation
+        setTimeout(() => {
+          el.textContent = String(value);
+          
+          // Remove animation class to trigger fade-in
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              el.classList.remove('animating');
+            });
+          });
+        }, 300);
+      };
+
+      try {
+        animateStat('winsCount', stats.wins);
+        animateStat('lossCount', stats.losses);
+        animateStat('beCount', stats.breakevens);
+        animateStat('longCount', stats.longCount);
+        animateStat('shortCount', stats.shortCount);
+
+        setStat('avgRr', stats.avgRr, false);
+        setStat('totalPnl', stats.totalPnl, true);
+        setStat('biggestProfit', stats.biggestProfit, true);
+        setStat('biggestLoss', stats.biggestLoss, true);
+        setStat('returnLong', stats.returnLong, true);
+        setStat('returnShort', stats.returnShort, true);
+        setStat('returnWinners', stats.returnWinners, true);
+        setStat('returnLosers', stats.returnLosers, true);
+        setStat('avgPnlWin', stats.avgPnlWin, true);
+        setStat('avgPnlLoss', stats.avgPnlLoss, true);
+        setStat('expectancyV2', stats.expectancyV2, true);
+
+        animateStat('totalTrades', stats.total);
+
+        const longestWinStreakEl = document.getElementById('longestWinStreak');
+        if (longestWinStreakEl) {
+          longestWinStreakEl.classList.add('animating');
+          void longestWinStreakEl.offsetHeight;
+          setTimeout(() => {
+            longestWinStreakEl.textContent = String(stats.longestWinStreak);
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                longestWinStreakEl.classList.remove('animating');
+              });
+            });
+          }, 300);
+        }
+        const longestLossStreakEl = document.getElementById('longestLossStreak');
+        if (longestLossStreakEl) {
+          longestLossStreakEl.classList.add('animating');
+          void longestLossStreakEl.offsetHeight;
+          setTimeout(() => {
+            longestLossStreakEl.textContent = String(stats.longestLossStreak);
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                longestLossStreakEl.classList.remove('animating');
+              });
+            });
+          }, 300);
+        }
+
+        const topWinEl = document.getElementById('topWinningDay');
+        if (topWinEl) {
+          topWinEl.classList.add('animating');
+          void topWinEl.offsetHeight;
+          setTimeout(() => {
+            topWinEl.textContent = stats.topWinningDay == null ? '—' : stats.topWinningDay;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                topWinEl.classList.remove('animating');
+              });
+            });
+          }, 300);
+        }
+        const topLossEl = document.getElementById('topLosingDay');
+        if (topLossEl) {
+          topLossEl.classList.add('animating');
+          void topLossEl.offsetHeight;
+          setTimeout(() => {
+            topLossEl.textContent = stats.topLosingDay == null ? '—' : stats.topLosingDay;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                topLossEl.classList.remove('animating');
+              });
+            });
+          }, 300);
+        }
+
+        const mostEffectiveEl = document.getElementById('mostEffectiveInstrument');
+        if (mostEffectiveEl) {
+          mostEffectiveEl.classList.add('animating');
+          void mostEffectiveEl.offsetHeight;
+          setTimeout(() => {
+            mostEffectiveEl.textContent = stats.mostEffectiveInstrument == null ? '—' : stats.mostEffectiveInstrument;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                mostEffectiveEl.classList.remove('animating');
+              });
+            });
+          }, 300);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function renderWeekChart(trades) {
+      const chartContainer = document.getElementById('weekChartBars');
+      if (!chartContainer) return;
+
+      // Day names: Monday = 0, Sunday = 6
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dayPnls = new Array(7).fill(0);
+
+      // Calculate P&L for each day of week
+      for (const trade of trades) {
+        const parts = String(trade.date || '').split('/');
+        if (parts.length !== 3) continue;
+
+        const dd = parseInt(parts[0], 10);
+        const mm = parseInt(parts[1], 10) - 1;
+        const yy = parseInt(parts[2], 10);
+
+        if (!Number.isInteger(dd) || !Number.isInteger(mm) || !Number.isInteger(yy)) continue;
+
+        const dateObj = new Date(yy, mm, dd);
+        // Convert JS getDay() (0=Sun, 6=Sat) to Monday-first (0=Mon, 6=Sun)
+        const dayOfWeek = (dateObj.getDay() + 6) % 7;
+
+        // pnl is now REAL (number) in database
+        const pnlNum = (trade.pnl != null && trade.pnl !== '') ? (typeof trade.pnl === 'number' ? trade.pnl : parseFloat(String(trade.pnl).replace(',', '.'))) : null;
+        if (pnlNum != null && Number.isFinite(pnlNum)) {
+          dayPnls[dayOfWeek] += pnlNum;
+        }
+      }
+
+      // Find max absolute value for scaling
+      const absValues = dayPnls.map(v => Math.abs(v));
+      const maxAbs = Math.max(...absValues, 1);
+
+      // Render chart bars
+      let html = '';
+
+      dayPnls.forEach((pnl, index) => {
+        const isPositive = pnl > 0.01;
+        const isNegative = pnl < -0.01;
+        const isZero = !isPositive && !isNegative;
+
+        // Calculate height as percentage based on absolute value
+        let heightPercent = 0;
+        if (isZero) {
+          heightPercent = 2; // Minimum visibility for zero
+        } else {
+          // Use absolute value to calculate height
+          heightPercent = (Math.abs(pnl) / maxAbs) * 100;
+          // Ensure minimum visibility
+          if (heightPercent < 3) heightPercent = 3;
+        }
+
+        // All bars start from the same bottom position (50px for labels)
+        const barClass = isZero ? '' : (isPositive ? 'positive' : 'negative');
+        const valueClass = isZero ? '' : (isPositive ? 'positive' : 'negative');
+        const sign = isPositive ? '+' : '';
+        const displayValue = isZero ? '0$' : sign + (Math.round(pnl * 100) / 100) + '$';
+
+        html += `
+          <div class="chart-bar-container">
+            <div class="chart-bar ${barClass}" style="--bar-height: ${heightPercent}%;">
+              <div class="chart-bar-value ${valueClass}">${displayValue}</div>
+            </div>
+            <div class="chart-bar-label">${dayNames[index]}</div>
+          </div>
+        `;
+      });
+
+      chartContainer.innerHTML = html;
+    }
+
+    const toastContainer = document.getElementById('toastContainer');
+    function showToast(message, opts = {}) {
+      const id = 'toast_' + Date.now();
+      const el = document.createElement('div');
+      el.className = 'toast';
+      if (opts.type === 'success') {
+        el.classList.add('toast-success');
+      } else if (opts.type === 'error') {
+        el.classList.add('toast-error');
+      }
+      el.id = id;
+      
+      // Add icon based on type
+      let iconHtml = '';
+      if (opts.type === 'success') {
+        iconHtml = `<div class="toast-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>`;
+      } else if (opts.type === 'error') {
+        iconHtml = `<div class="toast-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>`;
+      }
+      
+      el.innerHTML = `<div class="toast-msg">${iconHtml}${escapeHtml(message)}</div><button class="close-btn" aria-label="Close">×</button>`;
+      el.querySelector('.close-btn').addEventListener('click', () => removeToast(el));
+      toastContainer.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      const duration = typeof opts.duration === 'number' ? opts.duration : 3500;
+      const timer = setTimeout(() => removeToast(el), duration);
+      el._timer = timer;
+      return el;
+    }
+    function removeToast(el) {
+      if (!el) return;
+      if (el._timer) clearTimeout(el._timer);
+      el.classList.remove('show');
+      setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+    }
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // Track if we're editing a trade
+    let editingTradeId = null;
+    
+    // Track if trade is being submitted to prevent double submission
+    let isSubmittingTrade = false;
+
+    function updatePnlColor() {
+      const pnlInput = document.getElementById('pnlInput');
+      if (!pnlInput) return;
+      
+      const value = pnlInput.value.trim();
+      if (!value) {
+        pnlInput.classList.remove('pnl-positive', 'pnl-negative');
+        pnlInput.classList.add('pnl-neutral');
+        return;
+      }
+      
+      // Try to parse the value
+      const numValue = parseFloat(value.replace(',', '.'));
+      if (isNaN(numValue)) {
+        pnlInput.classList.remove('pnl-positive', 'pnl-negative');
+        pnlInput.classList.add('pnl-neutral');
+        return;
+      }
+      
+      // Remove all classes first
+      pnlInput.classList.remove('pnl-positive', 'pnl-negative', 'pnl-neutral');
+      
+      // Add appropriate class
+      if (numValue > 0) {
+        pnlInput.classList.add('pnl-positive');
+      } else if (numValue < 0) {
+        pnlInput.classList.add('pnl-negative');
+      } else {
+        pnlInput.classList.add('pnl-neutral');
+      }
+    }
+
+    function openAddModal() {
+      editingTradeId = null;
+      const modalTitle = document.getElementById('modalTitle');
+      if (modalTitle) modalTitle.textContent = 'Add Trade';
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      const df = `${y}-${m}-${d}`;
+      const dateInput = document.getElementById('dateInput');
+      if (dateInput) dateInput.value = df;
+      const typeInput = document.getElementById('typeInput'); if (typeInput) typeInput.value = 'Long';
+      const resultInput = document.getElementById('resultInput'); if (resultInput) resultInput.value = 'Win';
+      ['symbolInput', 'rrInput', 'pnlInput', 'screenshotInput', 'noteInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      
+      // Reset P&L color
+      updatePnlColor();
+      
+      const b = document.getElementById('modalBackdrop');
+      if (b) {
+        b.classList.remove('hiding');
+        b.style.display = 'flex';
+        b.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+          b.classList.add('show');
+        });
+      }
+      setTimeout(() => { 
+        const s = document.getElementById('symbolInput'); 
+        if (s) s.focus();
+        convertSelectsToCustomDropdowns();
+      }, 100);
+    }
+
+    async function openEditModal(tradeId) {
+      editingTradeId = tradeId;
+      const modalTitle = document.getElementById('modalTitle');
+      if (modalTitle) modalTitle.textContent = 'Edit Trade';
+      
+      try {
+        const res = await authFetch(`/trades/${tradeId}`);
+        if (!res.ok) {
+          if (res.status === 401) {
+            showLoginScreen();
+            return;
+          }
+          throw new Error('Failed to load trade');
+        }
+        const trade = await res.json();
+        
+        // Convert date from DD/MM/YYYY to YYYY-MM-DD for input
+        const dateParts = trade.date.split('/');
+        const formattedDate = dateParts.length === 3 
+          ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`
+          : '';
+        
+        const dateInput = document.getElementById('dateInput');
+        if (dateInput) dateInput.value = formattedDate;
+        
+        const symbolInput = document.getElementById('symbolInput');
+        if (symbolInput) symbolInput.value = trade.symbol || '';
+        
+        const typeInput = document.getElementById('typeInput');
+        if (typeInput) typeInput.value = trade.type || 'Long';
+        
+        const rrInput = document.getElementById('rrInput');
+        if (rrInput) rrInput.value = trade.rr != null ? String(trade.rr) : '';
+        
+        const resultInput = document.getElementById('resultInput');
+        if (resultInput) resultInput.value = trade.result || 'Win';
+        
+        const pnlInput = document.getElementById('pnlInput');
+        if (pnlInput) {
+          pnlInput.value = trade.pnl != null ? String(trade.pnl) : '';
+          updatePnlColor();
+        }
+        
+        const screenshotInput = document.getElementById('screenshotInput');
+        if (screenshotInput) screenshotInput.value = trade.screenshot || '';
+        
+        const noteInput = document.getElementById('noteInput');
+        if (noteInput) noteInput.value = trade.note || '';
+        
+        const b = document.getElementById('modalBackdrop');
+        if (b) {
+          b.classList.remove('hiding');
+          b.style.display = 'flex';
+          b.setAttribute('aria-hidden', 'false');
+          requestAnimationFrame(() => {
+            b.classList.add('show');
+          });
+        }
+        setTimeout(() => {
+          const s = document.getElementById('symbolInput');
+          if (s) s.focus();
+          convertSelectsToCustomDropdowns();
+        }, 100);
+      } catch (e) {
+        console.error('Error loading trade:', e);
+        showToast('Failed to load trade for editing', { duration: 3500 });
+      }
+    }
+
+    function closeAddModal() {
+      editingTradeId = null;
+      const b = document.getElementById('modalBackdrop');
+      if (b) {
+        b.classList.remove('show');
+        b.classList.add('hiding');
+        b.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+          b.style.display = 'none';
+          b.classList.remove('hiding');
+          // Clear all inputs after animation completes
+          ['dateInput', 'symbolInput', 'typeInput', 'rrInput', 'resultInput', 'pnlInput', 'screenshotInput', 'noteInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+          });
+        }, 400);
+      } else {
+        // If backdrop doesn't exist, clear inputs immediately
+        ['dateInput', 'symbolInput', 'typeInput', 'rrInput', 'resultInput', 'pnlInput', 'screenshotInput', 'noteInput'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+    }
+
+    const noteBackdrop = document.getElementById('noteModalBackdrop');
+    const noteContent = document.getElementById('noteContent');
+    const noteCloseX = document.getElementById('noteCloseX');
+    const noteCloseFooter = document.getElementById('noteCloseFooter');
+
+    function openNoteModal(note) {
+      if (noteContent) noteContent.textContent = note || '—';
+      if (noteBackdrop) {
+        noteBackdrop.classList.remove('hiding');
+        noteBackdrop.style.display = 'flex';
+        noteBackdrop.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+          noteBackdrop.classList.add('show');
+        });
+      }
+      // Remove focus to prevent outline on button
+      if (noteCloseX) noteCloseX.blur();
+    }
+    function closeNoteModal() {
+      if (noteBackdrop) {
+        noteBackdrop.classList.remove('show');
+        noteBackdrop.classList.add('hiding');
+        noteBackdrop.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+          noteBackdrop.style.display = 'none';
+          noteBackdrop.classList.remove('hiding');
+          // Clear content after animation completes
+          if (noteContent) noteContent.textContent = '';
+        }, 400);
+      } else {
+        // If backdrop doesn't exist, clear content immediately
+        if (noteContent) noteContent.textContent = '';
+      }
+    }
+    if (noteCloseX) noteCloseX.addEventListener('click', closeNoteModal);
+    if (noteCloseFooter) noteCloseFooter.addEventListener('click', closeNoteModal);
+
+    function formatDateInputToDisplay(raw) {
+      if (!raw) return '';
+      const [y, m, d] = raw.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function isValidTradingViewUrl(url) {
+      if (!url) return true;
+      try { const t = url.trim(); return t.startsWith(ALLOWED_PREFIX); } catch (e) { return false; }
+    }
+
+    function validateSymbol(sym) {
+      if (typeof sym !== 'string') return { ok: false, reason: 'Symbol must be a string' };
+      const s = sym.trim();
+      if (s.length === 0) return { ok: false, reason: 'Symbol cannot be empty' };
+      if (s.length > 10) return { ok: false, reason: 'Symbol can be up to 10 characters' };
+      if (!/^[A-Za-z0-9._-]+$/.test(s)) return { ok: false, reason: 'Symbol may contain only letters, digits, . _ -' };
+      return { ok: true, value: s.toUpperCase() };
+    }
+
+    function parseAndFormatRr(rrRaw) {
+      if (rrRaw == null) return { ok: false, reason: 'RR is required' };
+      const s = String(rrRaw).trim().replace(',', '.');
+      if (s === '') return { ok: false, reason: 'RR is required' };
+      const n = parseFloat(s);
+      if (!Number.isFinite(n)) return { ok: false, reason: 'RR must be a number' };
+      const rounded = Math.round(n * 100) / 100;
+      return { ok: true, value: Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2) };
+    }
+
+    function parseAndValidatePnl(pnlRaw) {
+      if (pnlRaw == null) return { ok: true, value: '' };
+      const s = String(pnlRaw).trim();
+      if (s === '') return { ok: true, value: '' };
+      const cleaned = s.replace(',', '.').replace(/[^\d.-]/g, '');
+      const n = parseFloat(cleaned);
+      if (!Number.isFinite(n)) return { ok: false, reason: 'P&L must be a number' };
+      if (n < -1000000 || n > 1000000) return { ok: false, reason: 'P&L must be between -1 000 000 and 1 000 000' };
+      const out = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+      return { ok: true, value: out };
+    }
+
+    (function attachRrFilters() {
+      const rrEl = document.getElementById('rrInput');
+      if (!rrEl) return;
+      rrEl.addEventListener('keydown', (e) => {
+        const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Tab'];
+        if (allowedKeys.includes(e.key)) return;
+        if (e.ctrlKey || e.metaKey) return;
+        if (/^[0-9.,]$/.test(e.key)) return;
+        e.preventDefault();
+      });
+      rrEl.addEventListener('input', () => {
+        let v = rrEl.value || '';
+        v = v.replace(',', '.');
+        v = v.replace(/[^0-9.]/g, '');
+        const firstDot = v.indexOf('.');
+        if (firstDot !== -1) {
+          const before = v.slice(0, firstDot + 1);
+          let after = v.slice(firstDot + 1).replace(/\./g, '');
+          after = after.slice(0, 2);
+          v = before + after;
+        }
+        if (v.length > 1 && v[0] === '0' && v[1] !== '.') {
+          v = v.replace(/^0+/, '');
+          if (v === '') v = '0';
+        }
+        if (rrEl.value !== v) {
+          const pos = rrEl.selectionStart || rrEl.value.length;
+          rrEl.value = v;
+          rrEl.setSelectionRange(Math.min(pos, v.length), Math.min(pos, v.length));
+        }
+      });
+      rrEl.addEventListener('paste', (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        if (!/^[0-9.,\s-]+$/.test(text)) { e.preventDefault(); }
+      });
+    })();
+
+    (function attachSymbolUppercase() {
+      const el = document.getElementById('symbolInput');
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = el.value.toUpperCase();
+        el.setSelectionRange(start, end);
+      });
+    })();
+
+    async function submitTrade() {
+      // Prevent double submission
+      if (isSubmittingTrade) return;
+      
+      const submitBtn = document.getElementById('submitTradeBtn');
+      if (!submitBtn) return;
+      
+      // Disable button and show loading state
+      isSubmittingTrade = true;
+      submitBtn.disabled = true;
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Saving...';
+      
+      const rawDateEl = document.getElementById('dateInput');
+      const rawDate = rawDateEl ? rawDateEl.value : '';
+      const symbolRaw = (document.getElementById('symbolInput') || {}).value || '';
+      const type = (document.getElementById('typeInput') || {}).value || '';
+      const rrRaw = (document.getElementById('rrInput') || {}).value || '';
+      const result = (document.getElementById('resultInput') || {}).value || '';
+      const pnlRaw = (document.getElementById('pnlInput') || {}).value || '';
+      const screenshot = (document.getElementById('screenshotInput') || {}).value || '';
+      const noteRaw = (document.getElementById('noteInput') || {}).value || '';
+
+      if (!rawDate) { 
+        customAlert('Please select a date.'); 
+        rawDateEl && rawDateEl.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+
+      const symCheck = validateSymbol(symbolRaw);
+      if (!symCheck.ok) { 
+        customAlert(symCheck.reason); 
+        const el = document.getElementById('symbolInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+      const symbol = symCheck.value;
+
+      if (!type) { 
+        customAlert('Select type (Long/Short).'); 
+        const el = document.getElementById('typeInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+
+      const rrCheck = parseAndFormatRr(rrRaw);
+      if (!rrCheck.ok) { 
+        customAlert(rrCheck.reason); 
+        const el = document.getElementById('rrInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+      const rr = rrCheck.value;
+
+      if (!result) { 
+        customAlert('Select result.'); 
+        const el = document.getElementById('resultInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+
+      const pnlCheck = parseAndValidatePnl(pnlRaw);
+      if (!pnlCheck.ok) { 
+        customAlert(pnlCheck.reason); 
+        const el = document.getElementById('pnlInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+      const pnl = pnlCheck.value;
+
+      if (!isValidTradingViewUrl(screenshot)) { 
+        customAlert('Link must start with: https://www.tradingview.com'); 
+        const el = document.getElementById('screenshotInput'); 
+        if (el) el.focus(); 
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }, 1200);
+        return; 
+      }
+
+      const note = String(noteRaw || '').trim().slice(0, 500);
+
+      const payload = {
+        date: formatDateInputToDisplay(rawDate),
+        symbol: symbol,
+        type: type,
+        rr: rr,
+        result: result,
+        pnl: pnl,
+        screenshot: screenshot,
+        note: note
+      };
+
+      try {
+        const url = editingTradeId ? `/trades/${editingTradeId}` : '/trades';
+        const method = editingTradeId ? 'PUT' : 'POST';
+        
+        const res = await authFetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Save error');
+        closeAddModal();
+        const route = location.pathname || '/trades';
+        if (route === '/analytics') await renderAnalyticsView();
+        else if (route === '/calendar') {
+          const { year, month } = getCalendarState();
+          renderCalendarView(year, month);
+        } else await loadTrades();
+        showToast(editingTradeId ? 'Trade updated successfully' : 'Trade added successfully', { duration: 3500, type: 'success' });
+      } catch (e) {
+        console.error(e);
+        customAlert('Failed to save entry.');
+      } finally {
+        // Re-enable button after delay to prevent rapid double-clicks
+        setTimeout(() => {
+          isSubmittingTrade = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
+        }, 1500); // 1.5 second delay before re-enabling
+      }
+    }
+
+    function handleScreenshotOpen(urlEnc) {
+      const url = decodeURIComponent(urlEnc || '').trim();
+      if (!url) { customAlert('No screenshot link.'); return; }
+      if (!isValidTradingViewUrl(url)) { customAlert('Invalid link. It must start with: https://www.tradingview.com'); return; }
+      try { window.open(url, '_blank', 'noopener'); } catch (e) { location.href = url; }
+    }
+
+    async function loadTrades() {
+      // Don't try to load if not authenticated
+      if (!currentUser || !authToken) {
+        const tbody = document.getElementById('journalBody');
+        if (tbody) {
+          tbody.innerHTML = '';
+        }
+        return;
+      }
+      
+      try {
+        const res = await authFetch('/trades');
+        if (!res.ok) {
+          if (res.status === 401) {
+            showLoginScreen();
+            return;
+          }
+          throw new Error('Fetch error');
+        }
+        const data = await res.json();
+        const tbody = document.getElementById('journalBody');
+        if (!tbody) return;
+        tbody.innerHTML = data.map(entry => {
+          const symbol = entry.symbol || '-';
+          const type = entry.type || '-';
+          // rr and pnl are now REAL (numbers) in database, handle both number and null
+          const rr = (entry.rr != null && entry.rr !== '') ? String(entry.rr) : '-';
+          const result = entry.result || '-';
+          const pnl = entry.pnl;
+          const screenshot = (entry.screenshot || '').trim();
+          const note = (entry.note || '').trim();
+
+          let resultClass = '';
+          if (/win/i.test(result)) resultClass = 'result-win';
+          else if (/loss/i.test(result)) resultClass = 'result-loss';
+          else resultClass = 'result-be';
+
+          // pnl is now a number (REAL) or null
+          const pnlNum = (pnl != null && pnl !== '') ? (typeof pnl === 'number' ? pnl : parseFloat(String(pnl).replace(',', '.'))) : null;
+          let pnlClass = '';
+          if (pnlNum !== null && Number.isFinite(pnlNum)) {
+            if (pnlNum > 0) pnlClass = 'pnl-win';
+            else if (pnlNum < 0) pnlClass = 'pnl-loss';
+          }
+
+          const sign = (pnlNum != null && Number.isFinite(pnlNum) && pnlNum > 0) ? '+' : '';
+          const pnlDisplay = (pnlNum != null && Number.isFinite(pnlNum)) ? sign + pnlNum + '$' : '-';
+          const urlEnc = encodeURIComponent(screenshot || '');
+          const noteEnc = encodeURIComponent(note || '');
+          const shotCell = screenshot ? `<button class="btn-edit shot-link" data-url="${urlEnc}" aria-label="Open screenshot">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              OPEN
+            </button>` : '-';
+          const noteCell = note ? `<button class="btn-edit note-link" data-note="${noteEnc}" aria-label="Open note">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              OPEN
+            </button>` : '-';
+
+          return `<tr>
+        <td>${entry.date}</td>
+        <td>${escapeHtml(symbol)}</td>
+        <td>${escapeHtml(type)}</td>
+        <td>${escapeHtml(rr)}</td>
+        <td><span class="${resultClass}">${escapeHtml(result)}</span></td>
+        <td class="${pnlClass}">${escapeHtml(pnlDisplay)}</td>
+        <td>${shotCell}</td>
+        <td>${noteCell}</td>
+        <td>
+          <div class="trade-actions">
+            <button class="btn-edit edit-trade-btn" data-trade-id="${entry.id}" aria-label="Edit entry ${entry.id}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </button>
+            <button class="btn-danger delete-trade-btn" data-trade-id="${entry.id}" aria-label="Delete entry ${entry.id}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+              </svg>
+              Delete
+            </button>
+          </div>
+        </td>
+      </tr>`;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        const tbody = document.getElementById('journalBody');
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="9" class="error-message">Failed to load entries. Please try again.</td></tr>';
+        }
+      }
+    }
+
+    async function deleteTrade(id) {
+      const confirmed = await customConfirm('Delete this entry?', 'Delete Trade', true);
+      if (!confirmed) return;
+      try {
+        const res = await authFetch(`/trades/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          if (res.status === 401) {
+            showLoginScreen();
+            return;
+          }
+          throw new Error('Delete error');
+        }
+        const route = (location.pathname || '/');
+        if (route === '/analytics') { await renderAnalyticsView(); }
+        else if (route === '/calendar') {
+          const { year, month } = getCalendarState();
+          renderCalendarView(year, month);
+        } else { await loadTrades(); }
+        showToast('Trade deleted successfully', { duration: 3000, type: 'success' });
+      } catch (e) {
+        console.error(e);
+        customAlert('Failed to delete the entry.');
+      }
+    }
+
+    async function exportTradesToPDF() {
+      if (!currentUser || !authToken) {
+        showToast('Please log in to export trades', { duration: 3000 });
+        return;
+      }
+
+      try {
+        showToast('Generating PDF...', { duration: 2000 });
+        
+        const res = await authFetch('/trades');
+        if (!res.ok) {
+          if (res.status === 401) {
+            showLoginScreen();
+            return;
+          }
+          throw new Error('Fetch error');
+        }
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+          showToast('No trades to export', { duration: 3000 });
+          return;
+        }
+
+        // Check if jsPDF is available
+        if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+          showToast('PDF library not loaded. Please refresh the page.', { duration: 4000 });
+          return;
+        }
+
+        // jsPDF can be exposed in different ways depending on the CDN
+        const jsPDF = window.jspdf?.jsPDF || window.jsPDF;
+        if (!jsPDF) {
+          showToast('PDF library not available. Please refresh the page.', { duration: 4000 });
+          return;
+        }
+        const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+        
+        // Set up fonts and colors matching the website style
+        // Using light theme colors: --text: #111827, --bg: #ffffff, --surface-2: #fafbfc, --border: #e1e8ed
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const startY = 25;
+        let yPos = startY;
+
+        // Title - matching website style (black text on white, bold)
+        doc.setFontSize(24);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(17, 24, 39); // --text: #111827
+        doc.text('TradeLog', margin, yPos);
+        yPos += 8;
+
+        // Subtitle
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(107, 114, 128); // --text-dim: #6b7280
+        const exportDate = new Date().toLocaleString('pl-PL', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        doc.text(`Trading History • Exported: ${exportDate}`, margin, yPos);
+        yPos += 12;
+
+        // Table headers - matching website style (--surface-2: #fafbfc, --text-dim: #6b7280)
+        const headers = ['Date', 'Symbol', 'Type', 'RR', 'Result', 'P&L', 'Screenshot', 'Notes'];
+        const colWidths = [25, 20, 18, 15, 20, 20, 30, 50];
+        const headerHeight = 10;
+        
+        // Draw header background - matching --surface-2: #fafbfc
+        doc.setFillColor(250, 251, 252);
+        doc.rect(margin, yPos - 7, pageWidth - 2 * margin, headerHeight, 'F');
+        
+        // Draw header border bottom - matching --border: #e1e8ed
+        doc.setDrawColor(225, 232, 237);
+        doc.setLineWidth(0.5);
+        doc.line(margin, yPos - 7 + headerHeight, pageWidth - margin, yPos - 7 + headerHeight);
+        
+        // Draw header text - matching website style (uppercase, small, dim color)
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(107, 114, 128); // --text-dim: #6b7280
+        let xPos = margin;
+        headers.forEach((header, i) => {
+          doc.text(header.toUpperCase(), xPos + 4, yPos);
+          xPos += colWidths[i];
+        });
+        yPos += headerHeight + 2;
+
+        // Table rows - matching website style
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        const rowHeight = 9;
+        
+        // Calculate available space for rows
+        // First page: has title and subtitle, so less space
+        // Subsequent pages: only header, so more space
+        const firstPageHeaderSpace = yPos; // Current yPos after title, subtitle, and table header
+        const subsequentPageHeaderSpace = startY + headerHeight + 2; // Just header on new page
+        const bottomMargin = margin + 50; // Space for summary or bottom margin
+        
+        // Available height for rows
+        const firstPageAvailableHeight = pageHeight - firstPageHeaderSpace - bottomMargin;
+        const subsequentPageAvailableHeight = pageHeight - subsequentPageHeaderSpace - bottomMargin;
+        
+        // Max rows per page
+        const maxRowsFirstPage = Math.floor(firstPageAvailableHeight / rowHeight);
+        const maxRowsSubsequentPage = Math.floor(subsequentPageAvailableHeight / rowHeight);
+        
+        let currentPageRowCount = 0;
+        let isFirstPage = true;
+
+        data.forEach((entry, index) => {
+          // Check if we need a new page before drawing the row
+          const maxRowsForCurrentPage = isFirstPage ? maxRowsFirstPage : maxRowsSubsequentPage;
+          
+          if (currentPageRowCount >= maxRowsForCurrentPage) {
+            // Add new page
+            doc.addPage();
+            isFirstPage = false;
+            currentPageRowCount = 0;
+            yPos = startY;
+            
+            // Redraw header on new page
+            doc.setFillColor(250, 251, 252);
+            doc.rect(margin, yPos - 7, pageWidth - 2 * margin, headerHeight, 'F');
+            doc.setDrawColor(225, 232, 237);
+            doc.setLineWidth(0.5);
+            doc.line(margin, yPos - 7 + headerHeight, pageWidth - margin, yPos - 7 + headerHeight);
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(107, 114, 128);
+            xPos = margin;
+            headers.forEach((header, i) => {
+              doc.text(header.toUpperCase(), xPos + 4, yPos);
+              xPos += colWidths[i];
+            });
+            yPos += headerHeight + 2;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+          }
+
+          // Prepare row data
+          const symbol = entry.symbol || '-';
+          const type = entry.type || '-';
+          const rr = (entry.rr != null && entry.rr !== '') ? String(entry.rr) : '-';
+          const result = entry.result || '-';
+          const pnl = entry.pnl;
+          const pnlNum = (pnl != null && pnl !== '') ? (typeof pnl === 'number' ? pnl : parseFloat(String(pnl).replace(',', '.'))) : null;
+          const sign = (pnlNum != null && Number.isFinite(pnlNum) && pnlNum > 0) ? '+' : '';
+          const pnlDisplay = (pnlNum != null && Number.isFinite(pnlNum)) ? sign + pnlNum.toFixed(2) + '$' : '-';
+          const screenshot = (entry.screenshot || '').trim();
+          const screenshotDisplay = screenshot ? 'Yes' : '-';
+          const note = (entry.note || '').trim();
+          const noteDisplay = note ? (note.length > 35 ? note.substring(0, 35) + '...' : note) : '-';
+
+          const rowData = [
+            entry.date || '-',
+            symbol,
+            type,
+            rr,
+            result,
+            pnlDisplay,
+            screenshotDisplay,
+            noteDisplay
+          ];
+
+          // Hover effect background on hover rows (subtle)
+          if (index % 2 === 1) {
+            doc.setFillColor(250, 251, 252); // --surface-2: #fafbfc
+            doc.rect(margin, yPos - 6, pageWidth - 2 * margin, rowHeight, 'F');
+          }
+
+          // Draw row border bottom - matching --border: #e1e8ed
+          doc.setDrawColor(225, 232, 237);
+          doc.setLineWidth(0.2);
+          doc.line(margin, yPos - 6 + rowHeight, pageWidth - margin, yPos - 6 + rowHeight);
+
+          // Set text color - default to --text: #111827
+          doc.setTextColor(17, 24, 39);
+
+          // Draw row cells
+          xPos = margin;
+          rowData.forEach((cell, i) => {
+            const cellText = String(cell);
+            // Truncate if too long
+            const maxWidth = colWidths[i] - 4;
+            const textWidth = doc.getTextWidth(cellText);
+            let displayText = cellText;
+            if (textWidth > maxWidth) {
+              let truncated = cellText;
+              while (doc.getTextWidth(truncated + '...') > maxWidth && truncated.length > 0) {
+                truncated = truncated.substring(0, truncated.length - 1);
+              }
+              displayText = truncated + '...';
+            }
+            
+            // Color coding for Result column (column 4)
+            if (i === 4) {
+              if (/win/i.test(result)) {
+                doc.setTextColor(16, 185, 129); // --green: #10b981
+              } else if (/loss/i.test(result)) {
+                doc.setTextColor(239, 68, 68); // --red: #ef4444
+              } else {
+                doc.setTextColor(107, 114, 128); // --text-dim for breakeven
+              }
+            }
+            // Color coding for P&L column (column 5)
+            else if (i === 5 && pnlNum !== null && Number.isFinite(pnlNum)) {
+              if (pnlNum > 0) {
+                doc.setTextColor(16, 185, 129); // --green: #10b981
+              } else if (pnlNum < 0) {
+                doc.setTextColor(239, 68, 68); // --red: #ef4444
+              } else {
+                doc.setTextColor(17, 24, 39); // --text
+              }
+            } else {
+              doc.setTextColor(17, 24, 39); // --text: #111827
+            }
+            
+            doc.text(displayText, xPos + 4, yPos);
+            xPos += colWidths[i];
+          });
+
+          // Reset text color
+          doc.setTextColor(17, 24, 39);
+          yPos += rowHeight;
+          currentPageRowCount++;
+        });
+
+        // Summary at the end
+        const totalTrades = data.length;
+        const wins = data.filter(t => /win/i.test(t.result || '')).length;
+        const losses = data.filter(t => /loss/i.test(t.result || '')).length;
+        const breakevens = data.filter(t => /breakeven/i.test(t.result || '')).length;
+        const totalPnl = data.reduce((sum, t) => {
+          const pnl = t.pnl;
+          const pnlNum = (pnl != null && pnl !== '') ? (typeof pnl === 'number' ? pnl : parseFloat(String(pnl).replace(',', '.'))) : null;
+          return sum + (pnlNum != null && Number.isFinite(pnlNum) ? pnlNum : 0);
+        }, 0);
+
+        // Add new page for summary if needed
+        if (yPos + 45 > pageHeight - margin) {
+          doc.addPage();
+          yPos = startY;
+        } else {
+          yPos += 15;
+        }
+
+        // Summary box - matching website card style (--surface: #ffffff, --border: #e1e8ed)
+        // Calculate required height: title (8mm) + spacing (2mm) + 4 lines (7mm each) + spacing (3mm) + total P&L (6mm) = 44mm
+        const summaryHeight = 45;
+        const summaryStartY = yPos - 3;
+        doc.setFillColor(255, 255, 255); // --surface: #ffffff
+        doc.setDrawColor(225, 232, 237); // --border: #e1e8ed
+        doc.setLineWidth(0.5);
+        // Rounded rectangle matching --radius-lg: 16px (approximately 4mm)
+        doc.roundedRect(margin, summaryStartY, pageWidth - 2 * margin, summaryHeight, 4, 4, 'FD');
+        
+        // Summary title - matching website h2 style
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(17, 24, 39); // --text: #111827
+        doc.text('Summary', margin + 8, summaryStartY + 8);
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        // Calculate win rate
+        const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+        
+        const summaryLeft = margin + 8;
+        const summaryRight = margin + (pageWidth - 2 * margin) / 2 + 8;
+        let summaryY = summaryStartY + 18;
+        
+        // Total Trades
+        doc.setTextColor(17, 24, 39); // --text
+        doc.text(`Total Trades: ${totalTrades}`, summaryLeft, summaryY);
+        doc.setTextColor(16, 185, 129); // --green
+        doc.text(`Wins: ${wins}`, summaryRight, summaryY);
+        summaryY += 7;
+        
+        // Win Rate and Losses
+        doc.setTextColor(107, 114, 128); // --text-dim
+        doc.text(`Win Rate: ${winRate}%`, summaryLeft, summaryY);
+        doc.setTextColor(239, 68, 68); // --red
+        doc.text(`Losses: ${losses}`, summaryRight, summaryY);
+        summaryY += 7;
+        
+        // Breakevens
+        doc.setTextColor(107, 114, 128); // --text-dim
+        doc.text(`Breakevens: ${breakevens}`, summaryLeft, summaryY);
+        summaryY += 8;
+        
+        // Total P&L - bold and colored
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(12);
+        const pnlColor = totalPnl >= 0 ? [16, 185, 129] : [239, 68, 68];
+        doc.setTextColor(pnlColor[0], pnlColor[1], pnlColor[2]);
+        doc.text(`Total P&L: ${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}$`, summaryLeft, summaryY);
+
+        // Generate filename
+        const filename = `tradelog_${new Date().toISOString().split('T')[0]}.pdf`;
+        
+        // Save PDF
+        doc.save(filename);
+        showToast('PDF exported successfully', { duration: 3000, type: 'success' });
+      } catch (e) {
+        console.error('Export error:', e);
+        showToast('Failed to export PDF. Please try again.', { duration: 4000 });
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      const shot = e.target && e.target.closest && e.target.closest('button.shot-link');
+      if (shot) {
+        e.preventDefault();
+        const enc = shot.getAttribute('data-url') || '';
+        handleScreenshotOpen(enc);
+        return;
+      }
+      const noteA = e.target && e.target.closest && e.target.closest('button.note-link');
+      if (noteA) {
+        e.preventDefault();
+        const enc = noteA.getAttribute('data-note') || '';
+        try { const note = decodeURIComponent(enc || ''); openNoteModal(note); } catch (err) { console.error('Cannot decode note', err); openNoteModal(enc || '—'); }
+      }
+    });
+
+    function setPageTitleWithAnimation(newTitle) {
+      const pageTitle = document.getElementById('pageTitle');
+      if (!pageTitle) return;
+      
+      // Change text immediately
+      pageTitle.textContent = newTitle;
+      
+      // Remove fade-in class to restart animation
+      pageTitle.classList.remove('fade-in');
+      
+      // Trigger fade in
+      requestAnimationFrame(() => {
+        pageTitle.classList.add('fade-in');
+      });
+    }
+
+    function navigateTo(route, push = true) {
+      const navButtons = Array.from(document.querySelectorAll('.nav-btn'));
+      navButtons.forEach(b => b.classList.remove('active'));
+      const activeBtn = navButtons.find(b => b.dataset.route === route);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (push && history && history.pushState) {
+        try { history.pushState({ route }, '', route); } catch (e) { }
+      }
+
+      const pageContent = document.getElementById('pageContent');
+      const hasContent = pageContent && pageContent.innerHTML.trim() !== '';
+
+      // Always hide content before rendering new content
+      if (pageContent) {
+        pageContent.classList.remove('fade-in');
+        pageContent.style.transition = 'none';
+        pageContent.style.setProperty('opacity', '0', 'important');
+        pageContent.style.setProperty('visibility', 'hidden', 'important');
+      }
+
+      // Use setTimeout to ensure styles are applied before rendering
+      setTimeout(() => {
+        // Render new content
+        if (route === '/analytics') renderAnalyticsView();
+        else if (route === '/calendar') renderCalendarView();
+        else if (route === '/settings') renderSettingsView();
+        else if (route === '/trades' || route === '/dashboard') renderTradesView();
+        else renderTradesView();
+
+        // Fade in after content is rendered - use multiple requestAnimationFrame to ensure DOM is updated
+        if (hasContent) {
+          // Wait for fade-out to complete before fading in (reduced delay for earlier appearance)
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+              if (pageContent) {
+                pageContent.style.transition = '';
+                pageContent.style.removeProperty('opacity');
+                pageContent.style.removeProperty('visibility');
+                pageContent.classList.add('fade-in');
+              }
+              });
+            });
+          }, 300);
+        } else {
+          // Fade in after content is rendered (use triple requestAnimationFrame to ensure DOM is fully updated)
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+              if (pageContent) {
+                pageContent.style.transition = '';
+                pageContent.style.removeProperty('opacity');
+                pageContent.style.removeProperty('visibility');
+                pageContent.classList.add('fade-in');
+              }
+              });
+            });
+          });
+        }
+      }, 0);
+    }
+
+    (function initNavigation() {
+      const navButtons = Array.from(document.querySelectorAll('.nav-btn'));
+      navButtons.forEach(btn => { btn.addEventListener('click', () => { const route = btn.dataset.route; navigateTo(route, true); }); });
+
+      window.addEventListener('popstate', (e) => {
+        const route = (e.state && e.state.route) || location.pathname || '/trades';
+        navigateTo(route, false);
+      });
+
+      // Check URL parameters for email confirmation
+      handleEmailConfirmation();
+      
+      // Check auth before initializing navigation
+      checkAuth().then(isAuthenticated => {
+        if (isAuthenticated) {
+          const initial = (location.pathname === '/' ? '/trades' : location.pathname);
+          navigateTo(initial, false);
+        }
+      });
+    })();
+    
+    // Handle email confirmation from URL parameters and hash fragments
+    function handleEmailConfirmation() {
+      // Handle Supabase hash fragments (primary method - Supabase uses #access_token=...)
+      if (window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        const error = hashParams.get('error');
+        const errorDescription = hashParams.get('error_description');
+        
+        if (error) {
+          // Handle error from hash
+          let errorMsg = errorDescription || 'Email confirmation failed';
+          setTimeout(() => {
+            showToast(errorMsg, { duration: 5000 });
+          }, 500);
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+        
+        if (accessToken && (type === 'email' || type === 'signup' || !type)) {
+          // Email confirmed via hash fragment
+          localStorage.setItem('auth_token', accessToken);
+          authToken = accessToken;
+          setTimeout(() => {
+            showToast('Email confirmed successfully!', { duration: 5000, type: 'success' });
+            // Reload to get user info
+            checkAuth().then(isAuthenticated => {
+              if (isAuthenticated) {
+                navigateTo('/trades', false);
+              }
+            });
+          }, 500);
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+      }
+      
+      // Handle query parameters (fallback method)
+      const urlParams = new URLSearchParams(window.location.search);
+      const emailConfirmed = urlParams.get('email_confirmed');
+      const token = urlParams.get('token');
+      const error = urlParams.get('error');
+      
+      // Handle email confirmation success
+      if (emailConfirmed === 'true') {
+        if (token) {
+          // Store token and log in
+          localStorage.setItem('auth_token', token);
+          authToken = token;
+          setTimeout(() => {
+            checkAuth().then(isAuthenticated => {
+              if (isAuthenticated) {
+                navigateTo('/trades', false);
+              }
+            });
+          }, 100);
+        }
+        // Show success message
+        setTimeout(() => {
+          showToast('Email confirmed successfully! You can now log in.', { duration: 5000, type: 'success' });
+        }, 500);
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      
+      // Handle errors from query params
+      if (error) {
+        let errorMsg = 'An error occurred';
+        if (error === 'invalid_confirmation_link') {
+          errorMsg = 'Invalid confirmation link';
+        } else if (error === 'confirmation_failed') {
+          errorMsg = 'Email confirmation failed. The link may have expired.';
+        }
+        setTimeout(() => {
+          showToast(errorMsg, { duration: 5000 });
+        }, 500);
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
+    (function attachBackdropClose() {
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const noteBackdropEl = document.getElementById('noteModalBackdrop');
+      function onBackdropClick(e, closeFn) { if (e.target === e.currentTarget) closeFn(); }
+      if (modalBackdrop) { modalBackdrop.addEventListener('click', (e) => onBackdropClick(e, closeAddModal)); modalBackdrop.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAddModal(); }); }
+      if (noteBackdropEl) { noteBackdropEl.addEventListener('click', (e) => onBackdropClick(e, closeNoteModal)); noteBackdropEl.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNoteModal(); }); }
+    })();
+
+    function updateSubtitleToToday() {
+      const el = document.getElementById('pageSubtitle'); if (!el) return;
+      const now = new Date();
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Warsaw' };
+      el.textContent = now.toLocaleDateString('en-GB', opts);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { updateSubtitleToToday(); });
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const b = document.getElementById('modalBackdrop'); if (b && b.style.display === 'flex') closeAddModal(); const nb = document.getElementById('noteModalBackdrop'); if (nb && nb.style.display === 'flex') closeNoteModal(); } });
+
+    function getCalendarState() {
+      const yEl = document.getElementById('yearSelect');
+      const mEl = document.getElementById('monthSelect');
+      const now = new Date();
+      return { year: yEl ? parseInt(yEl.value, 10) : now.getFullYear(), month: mEl ? parseInt(mEl.value, 10) : now.getMonth() };
+    }
+
+    // Attach event listeners to buttons (CSP compliant - no inline handlers)
+    function switchToSignup() {
+      const loginContainer = document.getElementById('loginContainer');
+      const signupContainer = document.getElementById('signupContainer');
+      if (loginContainer) loginContainer.classList.add('hidden');
+      if (signupContainer) signupContainer.classList.remove('hidden');
+      // Clear errors
+      const loginError = document.getElementById('loginError');
+      const signupError = document.getElementById('signupError');
+      if (loginError) {
+        loginError.textContent = '';
+        loginError.style.display = 'none';
+      }
+      if (signupError) {
+        signupError.textContent = '';
+        signupError.style.display = 'none';
+      }
+    }
+
+    function switchToLogin() {
+      const loginContainer = document.getElementById('loginContainer');
+      const signupContainer = document.getElementById('signupContainer');
+      if (signupContainer) signupContainer.classList.add('hidden');
+      if (loginContainer) loginContainer.classList.remove('hidden');
+      // Clear errors
+      const loginError = document.getElementById('loginError');
+      const signupError = document.getElementById('signupError');
+      if (loginError) {
+        loginError.textContent = '';
+        loginError.style.display = 'none';
+      }
+      if (signupError) {
+        signupError.textContent = '';
+        signupError.style.display = 'none';
+      }
+    }
+
+    function attachEventListeners() {
+      // Login/Signup buttons
+      const loginBtn = document.getElementById('loginBtn');
+      if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+      
+      const signupBtn = document.getElementById('signupBtn');
+      if (signupBtn) signupBtn.addEventListener('click', handleSignup);
+
+      // Switch between login and signup
+      const switchToSignupBtn = document.getElementById('switchToSignupBtn');
+      if (switchToSignupBtn) switchToSignupBtn.addEventListener('click', switchToSignup);
+
+      const switchToLoginBtn = document.getElementById('switchToLoginBtn');
+      if (switchToLoginBtn) switchToLoginBtn.addEventListener('click', switchToLogin);
+      
+      // Logout button
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+      
+      // New Trade buttons (static and dynamic)
+      const newTradeBtn = document.getElementById('newTradeBtn');
+      if (newTradeBtn) newTradeBtn.addEventListener('click', openAddModal);
+      
+      // Use event delegation for dynamically added buttons
+      document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'newTradeBtnHeader') {
+          openAddModal();
+        }
+        if (e.target && (e.target.id === 'exportPdfBtn' || e.target.closest('#exportPdfBtn'))) {
+          exportTradesToPDF();
+        }
+      });
+      
+      // Modal buttons
+      const cancelModalBtn = document.getElementById('cancelModalBtn');
+      if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeAddModal);
+      
+      const modalCloseX = document.getElementById('modalCloseX');
+      if (modalCloseX) modalCloseX.addEventListener('click', closeAddModal);
+      
+      const submitTradeBtn = document.getElementById('submitTradeBtn');
+      if (submitTradeBtn) submitTradeBtn.addEventListener('click', submitTrade);
+      
+      // P&L input color coding
+      const pnlInput = document.getElementById('pnlInput');
+      if (pnlInput) {
+        pnlInput.addEventListener('input', updatePnlColor);
+        pnlInput.addEventListener('change', updatePnlColor);
+      }
+      
+      // Settings buttons
+      const saveColorBtn = document.getElementById('saveColorBtn');
+      if (saveColorBtn) saveColorBtn.addEventListener('click', saveColorSettings);
+      
+      const resetColorBtn = document.getElementById('resetColorBtn');
+      if (resetColorBtn) resetColorBtn.addEventListener('click', resetColorSettings);
+      
+      // Delete trade buttons (event delegation for dynamically generated buttons)
+      document.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('delete-trade-btn')) {
+          const tradeId = e.target.getAttribute('data-trade-id');
+          if (tradeId) {
+            deleteTrade(parseInt(tradeId, 10));
+          }
+        }
+      });
+      
+      // Edit trade buttons (event delegation for dynamically generated buttons)
+      document.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('edit-trade-btn')) {
+          const tradeId = e.target.getAttribute('data-trade-id');
+          if (tradeId) {
+            openEditModal(parseInt(tradeId, 10));
+          }
+        }
+      });
+      
+      // Convert initial selects to custom dropdowns
+      setTimeout(() => convertSelectsToCustomDropdowns(), 100);
+    }
+    
+    // Initialize event listeners when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachEventListeners);
+    } else {
+      attachEventListeners();
+    }
+    
+    // Keep functions on window for backward compatibility (if needed)
+    window.openAddModal = openAddModal;
+    window.closeAddModal = closeAddModal;
+    window.submitTrade = submitTrade;
+    window.deleteTrade = deleteTrade;
+    window.handleScreenshotOpen = handleScreenshotOpen;
+    window.renderAnalyticsView = renderAnalyticsView;
+    window.renderTradesView = renderTradesView;
+    window.renderCalendarView = renderCalendarView;
+    window.renderSettingsView = renderSettingsView;
+    window.saveColorSettings = saveColorSettings;
+    window.resetColorSettings = resetColorSettings;
+    window.openNoteModal = openNoteModal;
+    window.closeNoteModal = closeNoteModal;
+    
+    // Initialize colors and theme on page load
+    loadColorSettings();
+    loadTheme();
+  </script>
+</body>
+
+</html>
